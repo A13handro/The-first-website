@@ -17,6 +17,7 @@ type Article struct {
 }
 
 var posts = []Article{}
+var showPosts = Article{}
 
 func index(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/header.html", "templates/index.html", "templates/footer.html")
@@ -49,8 +50,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 }
 
 func create(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/footer.html",
-		"templates/create.html", "templates/header.html")
+	t, err := template.ParseFiles("templates/header.html", "templates/create.html", "templates/footer.html")
 	if err != nil {
 		panic(err)
 	}
@@ -89,12 +89,47 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func show_post(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	t, err := template.ParseFiles("templates/header.html", "templates/show.html", "templates/footer.html")
+	if err != nil {
+		panic(err)
+	}
+
+	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	table, err := db.Query("SELECT * FROM articles WHERE id = $1", vars["id"])
+	if err != nil {
+		panic(err)
+	}
+
+	showPosts = Article{}
+	for table.Next() {
+		var post Article
+		err = table.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
+		if err != nil {
+			panic(err)
+		}
+
+		showPosts = post
+	}
+
+	t.ExecuteTemplate(w, "show", showPosts)
+}
+
 func handlfunc() {
 	rtr := mux.NewRouter()
 
 	rtr.HandleFunc("/", index).Methods("GET")
 	rtr.HandleFunc("/create", create).Methods("GET")
 	rtr.HandleFunc("/save_article", save_article).Methods("POST")
+	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET")
 
 	http.Handle("/", rtr)
 
