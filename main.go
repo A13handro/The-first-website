@@ -18,7 +18,7 @@ type Article struct {
 var posts = []Article{}
 
 func index(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/index.html")
+	t, err := template.ParseFiles("templates/header.html", "templates/index.html", "templates/footer.html")
 	if err != nil {
 		panic(err)
 	}
