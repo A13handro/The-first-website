@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"html/template"
 	"net/http"
 
@@ -57,11 +58,43 @@ func create(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "create", nil)
 }
 
+func save_article(w http.ResponseWriter, r *http.Request) {
+	title := r.FormValue("title")
+	anons := r.FormValue("anons")
+	full_text := r.FormValue("full_text")
+
+	if title == "" || anons == "" || full_text == "" {
+		fmt.Fprintf(w, "Не все поля заполнены")
+	} else {
+		connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+			panic(err)
+		}
+		defer db.Close()
+
+		err = db.Ping()
+		if err != nil {
+			panic(err)
+		}
+
+		insert, err := db.Query("INSERT INTO articles (title, anons, full_text) "+
+			"VALUES ($1, $2, $3)", title, anons, full_text)
+		if err != nil {
+			panic(err)
+		}
+		insert.Close()
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	}
+}
+
 func handlfunc() {
 	rtr := mux.NewRouter()
 
 	rtr.HandleFunc("/", index).Methods("GET")
 	rtr.HandleFunc("/create", create).Methods("GET")
+	rtr.HandleFunc("/save_article", save_article).Methods("POST")
 
 	http.Handle("/", rtr)
 
