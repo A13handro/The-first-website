@@ -104,15 +104,15 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	table, err := db.Query("SELECT * FROM articles WHERE id = $1", vars["id"])
+	insert, err := db.Query("SELECT * FROM articles WHERE id = $1", vars["id"])
 	if err != nil {
 		panic(err)
 	}
 
 	showPosts = Article{}
-	for table.Next() {
+	for insert.Next() {
 		var post Article
-		err = table.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
+		err = insert.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
 		if err != nil {
 			panic(err)
 		}
@@ -123,6 +123,25 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "show", showPosts)
 }
 
+func delete_post(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	insert, err := db.Query("DELETE FROM articles WHERE id = $1", vars["id"])
+	if err != nil {
+		panic(err)
+	}
+	insert.Close()
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func handlfunc() {
 	rtr := mux.NewRouter()
 
@@ -130,6 +149,7 @@ func handlfunc() {
 	rtr.HandleFunc("/create", create).Methods("GET")
 	rtr.HandleFunc("/save_article", save_article).Methods("POST")
 	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET")
+	rtr.HandleFunc("/delete_post/{id:[0-9]+}", delete_post).Methods("GET")
 
 	http.Handle("/", rtr)
 

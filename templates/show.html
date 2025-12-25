@@ -1,5 +1,6 @@
 {{define "show"}}
 {{template "header"}}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,8 +12,8 @@
     <div>
         <h3 class="float-md-start mb-0"><ya-tr-span style="visibility: inherit !important;">Обложка</ya-tr-span>
         </h3>
-        <nav class="nav nav-masthead justify-content-center float-md-end"> <a
-                class="nav-link fw-bold py-1 px-0" aria-current="page" href="/"><ya-tr-span
+        <nav class="nav nav-masthead justify-content-center float-md-end"> <a class="nav-link fw-bold py-1 px-0"
+                aria-current="page" href="/"><ya-tr-span
                     style="visibility: inherit !important;">Главная</ya-tr-span></a> <a
                 class="nav-link fw-bold py-1 px-0" href="/create"><ya-tr-span
                     style="visibility: inherit !important;">Добавить пост</ya-tr-span></a> <a
@@ -21,19 +22,16 @@
     </div>
 </header>
 <main class="px-3">
-    <h1><ya-tr-span data-index="3-0" data-translated="true" data-source-lang="en" data-target-lang="ru"
-            data-value="Cover your page." data-translation="Закройте страницу." data-ch="0" data-type="trSpan"
-            style="visibility: inherit !important;" data-selected="false">{{.Title}}</ya-tr-span></h1>
-    <p class="lead"><ya-tr-span data-index="3-1" data-translated="true" data-source-lang="en" data-target-lang="ru"
-            data-value="Cover is a one-page template for building simple and beautiful home pages. "
-            data-translation="Cover — это одностраничный шаблон для создания простых и красивых домашних страниц. "
-            data-ch="0" data-type="trSpan" style="visibility: inherit !important;">{{.FullText}}
-
-        </ya-tr-span></p>
-    <p class="lead"> <a href="/" class="btn btn-lg btn-light fw-bold border-white bg-white"><ya-tr-span data-index="3-3"
-                data-translated="true" data-source-lang="en" data-target-lang="ru" data-value="Learn more"
-                data-translation="Подробнее" data-ch="0" data-type="trSpan"
-                style="visibility: inherit !important;">Назад</ya-tr-span></a> </p>
+    <h1><ya-tr-span>{{.Title}}</ya-tr-span></h1>
+    <p class="lead">
+        <ya-tr-span style="visibility: inherit !important;">{{.FullText}}</ya-tr-span>
+    </p>
+    <p class="lead"><a href="/" class="btn btn-lg btn-light fw-bold border-white bg-white">
+            <ya-tr-span style="visibility: inherit !important;">Назад</ya-tr-span></a>
+    </p>
+    <p>
+        <a href="/delete_post/{{.Id}}" class="btn btn-danger">Пост гавно? Удалить?</a>
+    </p>
 </main>
 {{template "footer"}}
 {{end}}
