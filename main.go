@@ -53,6 +53,22 @@ func index(w http.ResponseWriter, r *http.Request) {
 	t.ExecuteTemplate(w, "index", posts)
 }
 
+func authorization(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/authorization.html")
+	if err != nil {
+		panic(err)
+	}
+	t.Execute(w, "authorization")
+}
+
+func registration(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/registration.html")
+	if err != nil {
+		panic(err)
+	}
+	t.Execute(w, "registration")
+}
+
 func create(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/header.html", "templates/create.html", "templates/footer.html")
 	if err != nil {
@@ -156,6 +172,8 @@ func handlfunc() {
 	rtr.HandleFunc("/save_article", save_article).Methods("POST")
 	rtr.HandleFunc("/post/{id:[0-9]+}", show_post).Methods("GET")
 	rtr.HandleFunc("/delete_post/{id:[0-9]+}", delete_post).Methods("GET")
+	rtr.HandleFunc("/authorization", authorization).Methods("GET")
+	rtr.HandleFunc("/registration", registration).Methods("GET")
 
 	http.Handle("/", rtr)
 
