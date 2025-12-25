@@ -1,5 +1,6 @@
 {{ define "create" }}
 {{ template "header" }}
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,8 +12,8 @@
     <div>
         <h3 class="float-md-start mb-0"><ya-tr-span style="visibility: inherit !important;">Обложка</ya-tr-span>
         </h3>
-        <nav class="nav nav-masthead justify-content-center float-md-end"> <a
-                class="nav-link fw-bold py-1 px-0" aria-current="page" href="/"><ya-tr-span
+        <nav class="nav nav-masthead justify-content-center float-md-end"> <a class="nav-link fw-bold py-1 px-0"
+                aria-current="page" href="/"><ya-tr-span
                     style="visibility: inherit !important;">Главная</ya-tr-span></a> <a
                 class="nav-link fw-bold py-1 px-0 active" href="/create"><ya-tr-span
                     style="visibility: inherit !important;">Добавить пост</ya-tr-span></a> <a
@@ -25,8 +26,20 @@
     <form action="/save_article" method="post">
         <input type="text" name="title" id="title" placeholder="Введите название статьи" class="form-control"><br>
         <textarea name="anons" id="anons" class="form-control" placeholder="Введите анонс статьи"></textarea><br>
-        <textarea name="full_text" id="full_text" class="form-control" placeholder="Введите текст статьи"></textarea><br>
+        <textarea name="full_text" id="full_text" class="form-control"
+            placeholder="Введите текст статьи"></textarea><br>
+        {{if .Message}}
+        <h6 id="messagee">{{.Message}}</h6>
+        {{end}}
         <button class="btn btn-warning">Добавить</button>
     </form>
-</main>{{ template "footer" }}
+</main>
+
+<script>
+    setTimeout(function () {
+        document.getElementById('messagee').remove();
+    }, 5000);
+</script>
+
+{{ template "footer" }}
 {{ end }}

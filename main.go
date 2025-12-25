@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"html/template"
 	"net/http"
 
@@ -16,6 +15,11 @@ type Article struct {
 	Title, Anons, FullText string
 }
 
+type Mes struct {
+	Message string
+}
+
+var data = Mes{}
 var posts = []Article{}
 var showPosts = Article{}
 
@@ -55,7 +59,8 @@ func create(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	t.ExecuteTemplate(w, "create", nil)
+	t.ExecuteTemplate(w, "create", data)
+	data = Mes{""}
 }
 
 func save_article(w http.ResponseWriter, r *http.Request) {
@@ -64,7 +69,8 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	full_text := r.FormValue("full_text")
 
 	if title == "" || anons == "" || full_text == "" {
-		fmt.Fprintf(w, "Не все поля заполнены")
+		data = Mes{"Не все поля заполнены!"}
+		http.Redirect(w, r, "/create", http.StatusSeeOther)
 	} else {
 		connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 		db, err := sql.Open("postgres", connStr)
