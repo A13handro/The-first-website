@@ -46,10 +46,22 @@ func index(w http.ResponseWriter, r *http.Request) {
 
 	t.ExecuteTemplate(w, "index", posts)
 }
+
+func create(w http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("templates/footer.html",
+		"templates/create.html", "templates/header.html")
+	if err != nil {
+		panic(err)
+	}
+
+	t.ExecuteTemplate(w, "create", nil)
+}
+
 func handlfunc() {
 	rtr := mux.NewRouter()
 
 	rtr.HandleFunc("/", index).Methods("GET")
+	rtr.HandleFunc("/create", create).Methods("GET")
 
 	http.Handle("/", rtr)
 
