@@ -28,18 +28,17 @@
         <textarea name="anons" id="anons" class="form-control" placeholder="Введите анонс статьи"></textarea><br>
         <textarea name="full_text" id="full_text" class="form-control"
             placeholder="Введите текст статьи"></textarea><br>
-        {{if .Message}}
-        <h6 id="messagee">{{.Message}}</h6>
+        {{if .}}
+        <h6 id="messagee">{{.}}</h6>
         {{end}}
+        <script>
+            setTimeout(function () {
+                document.getElementById('messagee').remove();
+            }, 5000);
+        </script>
         <button class="btn btn-warning">Добавить</button>
     </form>
 </main>
-
-<script>
-    setTimeout(function () {
-        document.getElementById('messagee').remove();
-    }, 5000);
-</script>
 
 {{ template "footer" }}
 {{ end }}
