@@ -13,14 +13,10 @@
         <h3 class="float-md-start mb-0"><ya-tr-span style="visibility: inherit !important;">Vibe-Web</ya-tr-span>
         </h3>
         <nav class="nav nav-masthead justify-content-center float-md-end"> <a class="nav-link fw-bold py-1 px-0 active"
-                aria-current="page" href="/"><ya-tr-span
+                aria-current="page" href="/api"><ya-tr-span
                     style="visibility: inherit !important;">Главная</ya-tr-span></a> <a
-                class="nav-link fw-bold py-1 px-0" href="/create"><ya-tr-span
-                    style="visibility: inherit !important;">Добавить пост</ya-tr-span></a> <a
-                class="nav-link fw-bold py-1 px-0" href="/authorization"><ya-tr-span
-                    style="visibility: inherit !important;">Авторизация</ya-tr-span></a>
-            <a class="nav-link fw-bold py-1 px-0" href="/registration"><ya-tr-span
-                    style="visibility: inherit !important;">Регистрация</ya-tr-span></a>
+                class="nav-link fw-bold py-1 px-0" href="/api/posts"><ya-tr-span
+                    style="visibility: inherit !important;">Добавить пост</ya-tr-span></a>
         </nav>
     </div>
 </header>
@@ -32,15 +28,21 @@
             Это — мой личный цифровой след, первая ступень в мир веб‑разработки и онлайн‑самовыражения.
             {{ range . }}
             <div class="alert alert-danger">
+                {{if .Pictures}}
+                <img class="mb-4" src="{{.Pictures}}" alt="" width="200" height="150">
+                {{end}}
                 <h2>{{.Title}}</h2>
-                <p>{{.Anons}}</p>
-                <a href="/post/{{.Id}}" class="btn btn-danger">Читать далее</a>
+                <p>{{.Сontent}}</p>
+                {{if .Role}}
+                <a href="/post/{{.Id}}" class="btn btn-danger">Редактировать пост</a>
+                {{end}}
             </div>
             {{else}}
             <p class="lead">Статей нет!</p>
             {{end}}
         </ya-tr-span></p>
-    <p class="lead"> <a target="_blank" href="https://lifehacker.ru/13-facts-about-world/" class="btn btn-lg btn-light fw-bold border-white bg-white"><ya-tr-span
+    <p class="lead"> <a target="_blank" href="https://lifehacker.ru/13-facts-about-world/"
+            class="btn btn-lg btn-light fw-bold border-white bg-white"><ya-tr-span
                 style="visibility: inherit !important;">Подробнее</ya-tr-span></a>
     </p>
 

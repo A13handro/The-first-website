@@ -7,108 +7,131 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
+	"github.com/asaskevich/govalidator"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
 )
 
 type Article struct {
-	Id                     uint16
-	Title, Anons, FullText string
+	Id             uint16
+	Title, Сontent string
+	Role           bool
+	Pictures       *string
 }
 
-var posts = []Article{}
+var postss = []Article{}
 var showPosts = Article{}
 
-var ThisToken string
+var AccessToken string
+var RefreshToken string
+
 var ThiseID int
 var Message string
 var secretKey = []byte("my_secret_key")
 
-func generateToken(userID int) (string, error) {
+func checkErr(err error) { //Проверка на ошибку
+	if err != nil {
+		Message = "Ошибка"
+		fmt.Println("Ошибка:")
+		panic(err)
+	}
+}
+
+func generateToken(userID int, num int) (string, error) { //Создание токена
 	claims := jwt.MapClaims{
 		"id":  userID,
-		"exp": time.Now().Add(time.Hour * 24).Unix(),
+		"exp": time.Now().Add(time.Hour * time.Duration(num)).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(secretKey)
 }
-func parseToken(tokenString string) (*jwt.Token, error) {
+func parseToken(tokenString string) (*jwt.Token, error) { //Проверка токена
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return secretKey, nil
 	})
 }
-func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc { //Проверка токена
 	return func(w http.ResponseWriter, r *http.Request) {
 		connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 		db, err := sql.Open("postgres", connStr)
-		if err != nil {
-			panic(err)
-		}
+		checkErr(err)
 		defer db.Close()
 
-		var authToken string
-		erro := db.QueryRow("SELECT auth_token FROM users WHERE id = $1", ThiseID).Scan(&authToken)
-		if erro != nil {
-			Message = "Токен не получен!"
-			http.Redirect(w, r, "/authorization", http.StatusSeeOther)
+		var authTokenA string
+		var authTokenR string
+		table, err := db.Query("SELECT accesstoken FROM users WHERE id = $1", ThiseID)
+		checkErr(err)
+		if table.Next() {
+			table.Scan(&authTokenA)
 		}
-		if authToken == ThisToken {
-			next(w, r)
-		} else {
-			fmt.Println("FFFFFFFFFf")
+		if AccessToken == "" || AccessToken != authTokenA {
+			Message = "Пожалуйста, авторизируйтесь!"
+			http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
+			return
 		}
+		tokenA, _ := parseToken(authTokenA)
+		if !tokenA.Valid {
+			err1 := db.QueryRow("SELECT refreshtoken FROM users WHERE id = $1", ThiseID).Scan(&authTokenR)
+			checkErr(err1)
+			tokenR, _ := parseToken(authTokenR)
+			if tokenR.Valid {
+				AccessToken, _ = generateToken(ThiseID, 15)
+				_, err = db.Exec("UPDATE users SET accesstoken = $1 WHERE id = $2", AccessToken, ThiseID)
+				checkErr(err)
+			} else {
+				Message = "Время сеанса истекло. Пожалуйста, авторезируйтесь повторно."
+				http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
+				return
+			}
+		}
+		next(w, r)
 	}
 }
 
-func index(w http.ResponseWriter, r *http.Request) {
+func index(w http.ResponseWriter, r *http.Request) { //Главная страница
 	t, err := template.ParseFiles("templates/header.html", "templates/index.html", "templates/footer.html")
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
-	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic(err)
-	}
+	db, err1 := sql.Open("postgres", connStr)
+	checkErr(err1)
 	defer db.Close()
 
-	table, err := db.Query("SELECT * FROM articles")
-	if err != nil {
-		panic(err)
-	}
-	posts = []Article{}
+	table, err2 := db.Query("SELECT * FROM articles")
+	checkErr(err2)
+	postss = []Article{}
 	for table.Next() {
 		var post Article
-		err = table.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
-		if err != nil {
-			panic(err)
-		}
-		posts = append(posts, post)
+		err = table.Scan(&post.Id, &post.Title, &post.Сontent, &post.Pictures)
+		checkErr(err)
+		err3 := db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&post.Role)
+		checkErr(err3)
+		postss = append(postss, post)
 	}
-
-	t.ExecuteTemplate(w, "index", posts)
+	t.ExecuteTemplate(w, "index", postss)
 }
 
-func authorization(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/authorization.html")
+func login(w http.ResponseWriter, r *http.Request) { //Авторизация
+	t, err := template.ParseFiles("templates/header.html", "templates/login.html")
 	if err != nil {
 		panic(err)
 	}
-	t.ExecuteTemplate(w, "authorization", Message)
+	t.ExecuteTemplate(w, "login", Message)
 	Message = ""
 }
 
-func auth(w http.ResponseWriter, r *http.Request) {
-	login := r.FormValue("login")
+func log(w http.ResponseWriter, r *http.Request) { //обработка Авторизации
+	email := r.FormValue("email")
 	password := r.FormValue("password")
-	if login == "" || password == "" {
+	if email == "" || password == "" {
 		Message = "Не все поля заполнены!"
-		http.Redirect(w, r, "/authorization", http.StatusSeeOther)
+		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
 		return
 	}
 	hash := md5.Sum([]byte(password))
@@ -121,9 +144,8 @@ func auth(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	insert, err := db.Query("SELECT id FROM users WHERE login = $1 AND hashed_password = $2", login, hashedPass)
+	insert, err := db.Query("SELECT id FROM users WHERE email = $1 AND passwordhash = $2", email, hashedPass)
 	if err != nil {
-		fmt.Println("НЕТ!")
 		panic(err)
 	}
 	if insert.Next() {
@@ -133,47 +155,55 @@ func auth(w http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 		ThiseID = id
-		ThisToken, _ = generateToken(id)
-		_, err = db.Exec("UPDATE users SET auth_token = $1 WHERE id = $2", ThisToken, id)
+		AccessToken, _ = generateToken(id, 2)
+		RefreshToken, _ = generateToken(id, 168)
+		_, err = db.Exec("UPDATE users SET accesstoken = $1, refreshtoken = $2 WHERE id = $3", AccessToken, RefreshToken, id)
 		if err != nil {
 			panic(err)
 		}
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, "/api", http.StatusSeeOther)
 	} else {
 		Message = "Неверный логин или пароль!"
-		http.Redirect(w, r, "/authorization", http.StatusSeeOther)
+		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
 	}
-	insert.Close()
 }
 
-func registration(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/registration.html")
+func register(w http.ResponseWriter, r *http.Request) { //Регистрация
+	t, err := template.ParseFiles("templates/register.html")
 	if err != nil {
 		panic(err)
 	}
-	t.Execute(w, "registration")
-}
-
-func create(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/header.html", "templates/create.html", "templates/footer.html")
-	if err != nil {
-		panic(err)
-	}
-
-	t.ExecuteTemplate(w, "create", Message)
+	t.ExecuteTemplate(w, "register", Message)
 	Message = ""
 }
 
-func save_article(w http.ResponseWriter, r *http.Request) {
-	title := r.FormValue("title")
-	anons := r.FormValue("anons")
-	full_text := r.FormValue("full_text")
-
-	if title == "" || anons == "" || full_text == "" {
+func reg(w http.ResponseWriter, r *http.Request) { //обработка Регистрации
+	email := r.FormValue("email")
+	em := govalidator.IsEmail(strings.TrimSpace(email))
+	password := r.FormValue("password")
+	name := r.FormValue("name")
+	surname := r.FormValue("surname")
+	roleStr := r.FormValue("role")
+	if email == "" || password == "" || name == "" || surname == "" {
 		Message = "Не все поля заполнены!"
-		http.Redirect(w, r, "/create", http.StatusSeeOther)
+		http.Redirect(w, r, "/api/auth/register", http.StatusSeeOther)
+		return
+	} else if em == false {
+		Message = "Формат логина не соответсвует!"
+		http.Redirect(w, r, "/api/auth/register", http.StatusSeeOther)
 		return
 	}
+	hash := md5.Sum([]byte(password))
+	hashedPass := hex.EncodeToString(hash[:])
+
+	var author bool
+	if roleStr == "true" {
+		author = true
+	} else {
+		author = false
+	}
+	fmt.Println(author)
+
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
@@ -181,23 +211,77 @@ func save_article(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
-		panic(err)
+	var idd string
+	erro := db.QueryRow("SELECT id FROM users WHERE email = $1", email).Scan(&idd)
+	if erro == nil {
+		Message = "Такой email уже существует!"
+		http.Redirect(w, r, "/api/auth/register", http.StatusSeeOther)
+		return
 	}
-
-	insert, err := db.Query("INSERT INTO articles (title, anons, full_text) "+
-		"VALUES ($1, $2, $3)", title, anons, full_text)
+	insert, err := db.Query("INSERT INTO users (email, passwordhash, name, surname, role) "+
+		"VALUES ($1, $2, $3, $4, $5)", email, hashedPass, name, surname, author)
 	if err != nil {
 		panic(err)
 	}
 	insert.Close()
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
-
+	http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
 }
 
-func show_post(w http.ResponseWriter, r *http.Request) {
+func posts(w http.ResponseWriter, r *http.Request) { //Создание поста
+	t, err := template.ParseFiles("templates/header.html", "templates/posts.html", "templates/footer.html")
+	if err != nil {
+		panic(err)
+	}
+
+	t.ExecuteTemplate(w, "posts", Message)
+	Message = ""
+}
+
+func pos(w http.ResponseWriter, r *http.Request) { //обработка Создания или изменения поста
+	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	pictures := r.FormValue("pictures")
+	title := r.FormValue("title")
+	content := r.FormValue("content")
+	idS := r.FormValue("id")
+	id, _ := strconv.Atoi(idS)
+	adres := r.FormValue("a")
+
+	if title == "" || content == "" {
+		if adres != "/api/posts" {
+			http.Redirect(w, r, fmt.Sprintf("/delete_post/%d", id), http.StatusSeeOther)
+			return
+		}
+		Message = "Не все поля заполнены!"
+		http.Redirect(w, r, "/api/posts", http.StatusSeeOther)
+		return
+	}
+	err = db.Ping()
+	checkErr(err)
+
+	// if pictures == "" {
+	// 	pictures = "s"
+	// }
+
+	ins, err1 := db.Query("SELECT * FROM articles WHERE id = $1", id)
+	checkErr(err1)
+	if ins.Next() {
+		_, err = db.Exec("UPDATE articles SET title = $1, content = $2, pictures = $3 WHERE id = $4", title, content, pictures, id)
+	} else {
+		insert, err := db.Query("INSERT INTO articles (title, content, pictures) VALUES ($1, $2, $3)", title, content, pictures)
+		checkErr(err)
+		insert.Close()
+	}
+
+	http.Redirect(w, r, "/api", http.StatusSeeOther)
+}
+
+func edit_post(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	t, err := template.ParseFiles("templates/header.html", "templates/show.html", "templates/footer.html")
@@ -220,18 +304,15 @@ func show_post(w http.ResponseWriter, r *http.Request) {
 	showPosts = Article{}
 	for insert.Next() {
 		var post Article
-		err = insert.Scan(&post.Id, &post.Title, &post.Anons, &post.FullText)
-		if err != nil {
-			panic(err)
-		}
-
+		err = insert.Scan(&post.Id, &post.Title, &post.Сontent, &post.Pictures)
+		checkErr(err)
 		showPosts = post
 	}
 
 	t.ExecuteTemplate(w, "show", showPosts)
 }
 
-func delete_post(w http.ResponseWriter, r *http.Request) {
+func delete_post(w http.ResponseWriter, r *http.Request) { //Удаление поста
 	vars := mux.Vars(r)
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
@@ -247,20 +328,21 @@ func delete_post(w http.ResponseWriter, r *http.Request) {
 	}
 	insert.Close()
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/api", http.StatusSeeOther)
 }
 
 func handlfunc() {
 	rtr := mux.NewRouter()
 
-	rtr.HandleFunc("/", authMiddleware(index)).Methods("GET")
-	rtr.HandleFunc("/create", authMiddleware(create)).Methods("GET")
-	rtr.HandleFunc("/save_article", save_article).Methods("POST")
-	rtr.HandleFunc("/post/{id:[0-9]+}", authMiddleware(show_post)).Methods("GET")
-	rtr.HandleFunc("/delete_post/{id:[0-9]+}", authMiddleware(delete_post)).Methods("GET")
-	rtr.HandleFunc("/authorization", authorization).Methods("GET")
-	rtr.HandleFunc("/registration", registration).Methods("GET")
-	rtr.HandleFunc("/auth", auth).Methods("POST")
+	rtr.HandleFunc("/api", authMiddleware(index)).Methods("GET")       //Главная страница
+	rtr.HandleFunc("/api/posts", authMiddleware(posts)).Methods("GET") //Создание поста
+	rtr.HandleFunc("/api/pos", pos).Methods("POST")                    //обработка Создания поста
+	rtr.HandleFunc("/post/{id:[0-9]+}", authMiddleware(edit_post)).Methods("GET")
+	rtr.HandleFunc("/delete_post/{id:[0-9]+}", authMiddleware(delete_post)).Methods("GET") //Удаление поста
+	rtr.HandleFunc("/api/auth/login", login).Methods("GET")                                //Авторизация
+	rtr.HandleFunc("/api/auth/log", log).Methods("POST")                                   //обработка Авторизации
+	rtr.HandleFunc("/api/auth/register", register).Methods("GET")                          //Регистрация
+	rtr.HandleFunc("/api/auth/reg", reg).Methods("POST")                                   //обработка Регистрации
 
 	http.Handle("/", rtr)
 
