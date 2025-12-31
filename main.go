@@ -3,9 +3,11 @@ package main
 import (
 	"crypto/md5"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,7 +23,8 @@ type Article struct {
 	Id             uint16
 	Title, Сontent string
 	Role           bool
-	Pictures       *string
+	Data           string
+	Mes            string
 }
 
 var postss = []Article{}
@@ -108,7 +111,7 @@ func index(w http.ResponseWriter, r *http.Request) { //Главная стран
 	postss = []Article{}
 	for table.Next() {
 		var post Article
-		err = table.Scan(&post.Id, &post.Title, &post.Сontent, &post.Pictures)
+		err = table.Scan(&post.Id, &post.Title, &post.Сontent, &post.Data)
 		checkErr(err)
 		err3 := db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&post.Role)
 		checkErr(err3)
@@ -139,28 +142,20 @@ func log(w http.ResponseWriter, r *http.Request) { //обработка Авто
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 	defer db.Close()
 
 	insert, err := db.Query("SELECT id FROM users WHERE email = $1 AND passwordhash = $2", email, hashedPass)
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 	if insert.Next() {
 		var id int
 		err := insert.Scan(&id)
-		if err != nil {
-			panic(err)
-		}
+		checkErr(err)
 		ThiseID = id
 		AccessToken, _ = generateToken(id, 2)
 		RefreshToken, _ = generateToken(id, 168)
 		_, err = db.Exec("UPDATE users SET accesstoken = $1, refreshtoken = $2 WHERE id = $3", AccessToken, RefreshToken, id)
-		if err != nil {
-			panic(err)
-		}
+		checkErr(err)
 		http.Redirect(w, r, "/api", http.StatusSeeOther)
 	} else {
 		Message = "Неверный логин или пароль!"
@@ -237,43 +232,57 @@ func posts(w http.ResponseWriter, r *http.Request) { //Создание пост
 	Message = ""
 }
 
-func pos(w http.ResponseWriter, r *http.Request) { //обработка Создания или изменения поста
-	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+func pos(w http.ResponseWriter, r *http.Request) { //обработка создания или изменения поста
+	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable" //Открываем бд
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	pictures := r.FormValue("pictures")
-	title := r.FormValue("title")
-	content := r.FormValue("content")
-	idS := r.FormValue("id")
+	flag := r.FormValue("pict")       //Галочка, что картинки не будет
+	title := r.FormValue("title")     //название статьи
+	content := r.FormValue("content") //Текст статьи
+	idS := r.FormValue("id")          //ID
 	id, _ := strconv.Atoi(idS)
-	adres := r.FormValue("a")
+	adres := r.FormValue("a")          //Адрес страницы, откуда вызвалась функция
+	file, _, err := r.FormFile("file") //Файл картинки
 
-	if title == "" || content == "" {
+	var pictur bool = false
+	if flag == "" && err != nil { //НЕТ КАРТИНКИ и ФЛАЖКА
+		pictur = true
+	}
+
+	if title == "" || content == "" || (pictur && adres == "/api/posts") {
+		Message = "Не все поля заполнены!"
 		if adres != "/api/posts" {
-			http.Redirect(w, r, fmt.Sprintf("/delete_post/%d", id), http.StatusSeeOther)
+			http.Redirect(w, r, adres, http.StatusSeeOther)
 			return
 		}
-		Message = "Не все поля заполнены!"
 		http.Redirect(w, r, "/api/posts", http.StatusSeeOther)
 		return
 	}
-	err = db.Ping()
-	checkErr(err)
 
-	// if pictures == "" {
-	// 	pictures = "s"
-	// }
+	var fileCod string
+	var fileBytes = []byte("s")
+	if pictur == false && flag == "" { //Если есть картинка
+		fileBytes, err = io.ReadAll(file)
+		checkErr(err)
+		defer file.Close()
+	}
+	fileCod = base64.StdEncoding.EncodeToString(fileBytes)
 
-	ins, err1 := db.Query("SELECT * FROM articles WHERE id = $1", id)
-	checkErr(err1)
-	if ins.Next() {
-		_, err = db.Exec("UPDATE articles SET title = $1, content = $2, pictures = $3 WHERE id = $4", title, content, pictures, id)
+	ins, err3 := db.Query("SELECT * FROM articles WHERE id = $1", id)
+	checkErr(err3)
+	if ins.Next() { // Если редактируем пост
+		if pictur == true {
+			_, err = db.Exec("UPDATE articles SET title = $1, content = $2 WHERE id = $3", title, content, id)
+		} else {
+			_, err = db.Exec("UPDATE articles SET title = $1, content = $2, data = $3 WHERE id = $4", title, content, fileCod, id)
+		}
+		checkErr(err)
 	} else {
-		insert, err := db.Query("INSERT INTO articles (title, content, pictures) VALUES ($1, $2, $3)", title, content, pictures)
+		insert, err := db.Query("INSERT INTO articles (title, content, data) VALUES ($1, $2, $3)", title, content, fileCod)
 		checkErr(err)
 		insert.Close()
 	}
@@ -281,7 +290,7 @@ func pos(w http.ResponseWriter, r *http.Request) { //обработка Созд
 	http.Redirect(w, r, "/api", http.StatusSeeOther)
 }
 
-func edit_post(w http.ResponseWriter, r *http.Request) {
+func edit_post(w http.ResponseWriter, r *http.Request) { //Редактирование поста
 	vars := mux.Vars(r)
 
 	t, err := template.ParseFiles("templates/header.html", "templates/show.html", "templates/footer.html")
@@ -304,7 +313,8 @@ func edit_post(w http.ResponseWriter, r *http.Request) {
 	showPosts = Article{}
 	for insert.Next() {
 		var post Article
-		err = insert.Scan(&post.Id, &post.Title, &post.Сontent, &post.Pictures)
+		err = insert.Scan(&post.Id, &post.Title, &post.Сontent, &post.Data)
+		post.Mes = Message
 		checkErr(err)
 		showPosts = post
 	}
@@ -347,7 +357,6 @@ func handlfunc() {
 	http.Handle("/", rtr)
 
 	http.ListenAndServe(":8080", nil)
-
 }
 
 func main() {

@@ -28,8 +28,8 @@
             Это — мой личный цифровой след, первая ступень в мир веб‑разработки и онлайн‑самовыражения.
             {{ range . }}
             <div class="alert alert-danger">
-                {{if .Pictures}}
-                <img class="mb-4" src="{{.Pictures}}" alt="" width="200" height="150">
+                {{if and (ne .Data "s") (ne .Data "cw==")}}
+                <img class="mb-4" src="data:image/*;base64,{{.Data}}" alt="Картинка" width="200" height="150">
                 {{end}}
                 <h2>{{.Title}}</h2>
                 <p>{{.Сontent}}</p>
