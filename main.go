@@ -21,13 +21,13 @@ import (
 
 type Article struct {
 	Id             uint16
-	Title, Сontent string
-	Role           bool
+	Title, Content string
 	Data           string
 	Mes            string
+	Rol            bool
 }
 
-var postss = []Article{}
+var Art = []Article{}
 var showPosts = Article{}
 
 var AccessToken string
@@ -108,23 +108,38 @@ func index(w http.ResponseWriter, r *http.Request) { //Главная стран
 
 	table, err2 := db.Query("SELECT * FROM articles")
 	checkErr(err2)
-	postss = []Article{}
-	for table.Next() {
+
+	var role bool
+	var Art = []Article{}
+	err3 := db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&role)
+	checkErr(err3)
+	for table.Next() { //Заполняем Art
 		var post Article
-		err = table.Scan(&post.Id, &post.Title, &post.Сontent, &post.Data)
+		err = table.Scan(&post.Id, &post.Title, &post.Content, &post.Data)
 		checkErr(err)
-		err3 := db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&post.Role)
-		checkErr(err3)
-		postss = append(postss, post)
+		post.Rol = role
+		Art = append(Art, post)
 	}
-	t.ExecuteTemplate(w, "index", postss)
+	data := struct {
+		Posts []Article
+		Role  bool
+		Mes   string
+	}{
+		Posts: Art,
+		Role:  role,
+		Mes:   Message,
+	}
+	t.ExecuteTemplate(w, "index", data)
+	Message = ""
 }
 
 func login(w http.ResponseWriter, r *http.Request) { //Авторизация
 	t, err := template.ParseFiles("templates/header.html", "templates/login.html")
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
+
+	AccessToken = "" // Выходим из аккаунта
+	RefreshToken = ""
+
 	t.ExecuteTemplate(w, "login", Message)
 	Message = ""
 }
@@ -164,10 +179,12 @@ func log(w http.ResponseWriter, r *http.Request) { //обработка Авто
 }
 
 func register(w http.ResponseWriter, r *http.Request) { //Регистрация
-	t, err := template.ParseFiles("templates/register.html")
-	if err != nil {
-		panic(err)
-	}
+	t, err := template.ParseFiles("templates/header.html", "templates/register.html")
+	checkErr(err)
+
+	AccessToken = "" // Выходим из аккаунта
+	RefreshToken = ""
+
 	t.ExecuteTemplate(w, "register", Message)
 	Message = ""
 }
@@ -224,8 +241,20 @@ func reg(w http.ResponseWriter, r *http.Request) { //обработка Реги
 
 func posts(w http.ResponseWriter, r *http.Request) { //Создание поста
 	t, err := template.ParseFiles("templates/header.html", "templates/posts.html", "templates/footer.html")
-	if err != nil {
-		panic(err)
+	checkErr(err)
+
+	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	db, err := sql.Open("postgres", connStr)
+	checkErr(err)
+	defer db.Close()
+
+	var role bool //Проверка на права
+	err = db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&role)
+	checkErr(err)
+	if role == false {
+		Message = "У вас нет прав!"
+		http.Redirect(w, r, "/api", http.StatusSeeOther)
+		return
 	}
 
 	t.ExecuteTemplate(w, "posts", Message)
@@ -294,26 +323,28 @@ func edit_post(w http.ResponseWriter, r *http.Request) { //Редактиров�
 	vars := mux.Vars(r)
 
 	t, err := template.ParseFiles("templates/header.html", "templates/show.html", "templates/footer.html")
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 	defer db.Close()
 
 	insert, err := db.Query("SELECT * FROM articles WHERE id = $1", vars["id"])
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 
+	var role bool //Проверка на права
+	err = db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&role)
+	checkErr(err)
+	if role == false {
+		Message = "У вас нет прав!"
+		http.Redirect(w, r, "/api", http.StatusSeeOther)
+		return
+	}
 	showPosts = Article{}
 	for insert.Next() {
 		var post Article
-		err = insert.Scan(&post.Id, &post.Title, &post.Сontent, &post.Data)
+		err = insert.Scan(&post.Id, &post.Title, &post.Content, &post.Data)
 		post.Mes = Message
 		checkErr(err)
 		showPosts = post
@@ -327,15 +358,20 @@ func delete_post(w http.ResponseWriter, r *http.Request) { //Удаление п
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
-	if err != nil {
-		panic(err)
-	}
+	checkErr(err)
 	defer db.Close()
 
-	insert, err := db.Query("DELETE FROM articles WHERE id = $1", vars["id"])
-	if err != nil {
-		panic(err)
+	var role bool //Проверка на права
+	err = db.QueryRow("SELECT role FROM users WHERE id = $1", ThiseID).Scan(&role)
+	checkErr(err)
+	if role == false {
+		Message = "У вас нет прав!"
+		http.Redirect(w, r, "/api", http.StatusSeeOther)
+		return
 	}
+
+	insert, err := db.Query("DELETE FROM articles WHERE id = $1", vars["id"])
+	checkErr(err)
 	insert.Close()
 
 	http.Redirect(w, r, "/api", http.StatusSeeOther)
