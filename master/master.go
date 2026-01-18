@@ -17,7 +17,10 @@ type Article struct {
 	Rol            bool
 }
 
-func Master(w http.ResponseWriter, r *http.Request) { //Главная страница (GET)
+// @Summary Главная страница
+// @Tags Master
+// @Router /api [get]
+func Master(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/header.html", "templates/index.html", "templates/footer.html")
 	tkns.CheckErr(err)
 

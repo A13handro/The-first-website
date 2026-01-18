@@ -1,0 +1,101 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Сайт",
+        "title": "API на Go со Swagger",
+        "contact": {
+            "name": "Александр",
+            "url": "https://vk.com/a13handro"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8080",
+    "basePath": "/api/v1",
+    "paths": {
+        "/api": {
+            "get": {
+                "tags": [
+                    "Master"
+                ],
+                "summary": "Главная страница",
+                "responses": {}
+            }
+        },
+        "/api/auth/log": {
+            "post": {
+                "tags": [
+                    "Authorization"
+                ],
+                "summary": "Метод обработки авторизации",
+                "responses": {}
+            }
+        },
+        "/api/auth/login": {
+            "get": {
+                "tags": [
+                    "Authorization"
+                ],
+                "summary": "Страница авторизации",
+                "responses": {}
+            }
+        },
+        "/api/auth/reg": {
+            "post": {
+                "tags": [
+                    "Registration"
+                ],
+                "summary": "Метод обработки регистрации",
+                "responses": {}
+            }
+        },
+        "/api/auth/register": {
+            "get": {
+                "tags": [
+                    "Registration"
+                ],
+                "summary": "Страница регистрации",
+                "responses": {}
+            }
+        },
+        "/api/pos": {
+            "post": {
+                "description": "Требует аутентификации. Функция для создания и изменения поста. Сложная логика с картинками: при создании нужно выбрать будет картинка или нет, а при изменении можно не менять.",
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Обработка создания поста или изменения поста",
+                "responses": {}
+            }
+        },
+        "/api/posts": {
+            "get": {
+                "description": "Требует аутентификации. Проверяет роль. Если роль читателя, то выдает сообщение и перенаправляет на главную страницу.",
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Страница создания поста",
+                "responses": {}
+            }
+        },
+        "/delete_post/{id}": {
+            "get": {
+                "description": "Требует аутентификации.",
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Удаление поста",
+                "responses": {}
+            }
+        },
+        "/post/{id}": {
+            "get": {
+                "description": "Требует аутентификации.",
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Страница редактирования поста",
+                "responses": {}
+            }
+        }
+    }
+}

@@ -1,0 +1,72 @@
+basePath: /api/v1
+host: localhost:8080
+info:
+  contact:
+    name: Александр
+    url: https://vk.com/a13handro
+  description: Сайт
+  title: API на Go со Swagger
+  version: "1.0"
+paths:
+  /api:
+    get:
+      responses: {}
+      summary: Главная страница
+      tags:
+      - Master
+  /api/auth/log:
+    post:
+      responses: {}
+      summary: Метод обработки авторизации
+      tags:
+      - Authorization
+  /api/auth/login:
+    get:
+      responses: {}
+      summary: Страница авторизации
+      tags:
+      - Authorization
+  /api/auth/reg:
+    post:
+      responses: {}
+      summary: Метод обработки регистрации
+      tags:
+      - Registration
+  /api/auth/register:
+    get:
+      responses: {}
+      summary: Страница регистрации
+      tags:
+      - Registration
+  /api/pos:
+    post:
+      description: 'Требует аутентификации. Функция для создания и изменения поста.
+        Сложная логика с картинками: при создании нужно выбрать будет картинка или
+        нет, а при изменении можно не менять.'
+      responses: {}
+      summary: Обработка создания поста или изменения поста
+      tags:
+      - Posts
+  /api/posts:
+    get:
+      description: Требует аутентификации. Проверяет роль. Если роль читателя, то
+        выдает сообщение и перенаправляет на главную страницу.
+      responses: {}
+      summary: Страница создания поста
+      tags:
+      - Posts
+  /delete_post/{id}:
+    get:
+      description: Требует аутентификации.
+      responses: {}
+      summary: Удаление поста
+      tags:
+      - Posts
+  /post/{id}:
+    get:
+      description: Требует аутентификации.
+      responses: {}
+      summary: Страница редактирования поста
+      tags:
+      - Posts
+swagger: "2.0"

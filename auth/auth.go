@@ -12,7 +12,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Login(w http.ResponseWriter, r *http.Request) { //Авторизация (GET)
+// @Summary Страница авторизации
+// @Tags Authorization
+// @Router /api/auth/login [get]
+func Login(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/header.html", "templates/login.html")
 	tkns.CheckErr(err)
 
@@ -23,7 +26,10 @@ func Login(w http.ResponseWriter, r *http.Request) { //Авторизация (G
 	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
 }
 
-func Log(w http.ResponseWriter, r *http.Request) { //обработка Авторизации (POST)
+// @Summary Метод обработки авторизации
+// @Tags Authorization
+// @Router /api/auth/log [post]
+func Log(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	if email == "" || password == "" { //Проверка на заполнение формы
@@ -62,7 +68,10 @@ func Log(w http.ResponseWriter, r *http.Request) { //обработка Авто
 	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
 }
 
-func Register(w http.ResponseWriter, r *http.Request) { //Регистрация (GET)
+// @Summary Страница регистрации
+// @Tags Registration
+// @Router /api/auth/register [get]
+func Register(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/header.html", "templates/register.html")
 	tkns.CheckErr(err)
 
@@ -73,7 +82,10 @@ func Register(w http.ResponseWriter, r *http.Request) { //Регистрация
 	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
 }
 
-func Reg(w http.ResponseWriter, r *http.Request) { //обработка Регистрации (POST)
+// @Summary Метод обработки регистрации
+// @Tags Registration
+// @Router /api/auth/reg [post]
+func Reg(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	em := govalidator.IsEmail(strings.TrimSpace(email)) //Проверка на форму email
 	password := r.FormValue("password")

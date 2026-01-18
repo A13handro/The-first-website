@@ -7,12 +7,25 @@ import (
 	pst "the-first-website/post"
 	tkns "the-first-website/tokens"
 
+	_ "the-first-website/docs"
+
 	"github.com/gorilla/mux"
 	_ "github.com/lib/pq"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
+
+// @title API на Go со Swagger
+// @version 1.0
+// @description Сайт
+// @contact.name Александр
+// @contact.url https://vk.com/a13handro
+// @host localhost:8080
+// @BasePath /api/v1
 
 func handlfunc() {
 	rtr := mux.NewRouter()
+
+	rtr.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
 	rtr.HandleFunc("/api", tkns.AuthMiddleware(mst.Master)).Methods("GET")      //Главная страница
 	rtr.HandleFunc("/api/posts", tkns.AuthMiddleware(pst.Posts)).Methods("GET") //Создание поста

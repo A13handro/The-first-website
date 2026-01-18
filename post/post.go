@@ -13,7 +13,11 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func Posts(w http.ResponseWriter, r *http.Request) { //Создание поста (GET)
+// @Summary Страница создания поста
+// @Description Требует аутентификации. Проверяет роль. Если роль читателя, то выдает сообщение и перенаправляет на главную страницу.
+// @Tags Posts
+// @Router /api/posts [get]
+func Posts(w http.ResponseWriter, r *http.Request) {
 	t, err := template.ParseFiles("templates/header.html", "templates/posts.html", "templates/footer.html")
 	tkns.CheckErr(err)
 
@@ -35,7 +39,11 @@ func Posts(w http.ResponseWriter, r *http.Request) { //Создание пост
 	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
 }
 
-func Pos(w http.ResponseWriter, r *http.Request) { //обработка создания или изменения поста (POST)
+// @Summary Обработка создания поста или изменения поста
+// @Description Требует аутентификации. Функция для создания и изменения поста. Сложная логика с картинками: при создании нужно выбрать будет картинка или нет, а при изменении можно не менять.
+// @Tags Posts
+// @Router /api/pos [post]
+func Pos(w http.ResponseWriter, r *http.Request) {
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
 	tkns.CheckErr(err)
@@ -92,7 +100,11 @@ func Pos(w http.ResponseWriter, r *http.Request) { //обработка созд
 	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
 }
 
-func Edit_post(w http.ResponseWriter, r *http.Request) { //Редактирование поста (GET)
+// @Summary Страница редактирования поста
+// @Description Требует аутентификации.
+// @Tags Posts
+// @Router /post/{id} [get]
+func Edit_post(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r) //Принимаем ID поста
 
 	t, err := template.ParseFiles("templates/header.html", "templates/show.html", "templates/footer.html")
@@ -127,7 +139,11 @@ func Edit_post(w http.ResponseWriter, r *http.Request) { //Редактиров�
 	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
 }
 
-func Delete_post(w http.ResponseWriter, r *http.Request) { //Удаление поста
+// @Summary Удаление поста
+// @Description Требует аутентификации.
+// @Tags Posts
+// @Router /delete_post/{id} [get]
+func Delete_post(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
