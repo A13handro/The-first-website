@@ -103,8 +103,8 @@ func Pos(w http.ResponseWriter, r *http.Request) {
 // @Summary Страница редактирования поста
 // @Description Требует аутентификации.
 // @Tags Posts
-// @Router /post/{id} [get]
-func Edit_post(w http.ResponseWriter, r *http.Request) {
+// @Router /api/post/{id} [get]
+func Edit(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r) //Принимаем ID поста
 
 	t, err := template.ParseFiles("templates/header.html", "templates/show.html", "templates/footer.html")
@@ -142,8 +142,8 @@ func Edit_post(w http.ResponseWriter, r *http.Request) {
 // @Summary Удаление поста
 // @Description Требует аутентификации.
 // @Tags Posts
-// @Router /delete_post/{id} [get]
-func Delete_post(w http.ResponseWriter, r *http.Request) {
+// @Router /api/delete/{id} [get]
+func Delete(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"

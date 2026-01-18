@@ -38,6 +38,13 @@ paths:
       summary: Страница регистрации
       tags:
       - Registration
+  /api/delete/{id}:
+    get:
+      description: Требует аутентификации.
+      responses: {}
+      summary: Удаление поста
+      tags:
+      - Posts
   /api/pos:
     post:
       description: 'Требует аутентификации. Функция для создания и изменения поста.
@@ -47,26 +54,19 @@ paths:
       summary: Обработка создания поста или изменения поста
       tags:
       - Posts
+  /api/post/{id}:
+    get:
+      description: Требует аутентификации.
+      responses: {}
+      summary: Страница редактирования поста
+      tags:
+      - Posts
   /api/posts:
     get:
       description: Требует аутентификации. Проверяет роль. Если роль читателя, то
         выдает сообщение и перенаправляет на главную страницу.
       responses: {}
       summary: Страница создания поста
-      tags:
-      - Posts
-  /delete_post/{id}:
-    get:
-      description: Требует аутентификации.
-      responses: {}
-      summary: Удаление поста
-      tags:
-      - Posts
-  /post/{id}:
-    get:
-      description: Требует аутентификации.
-      responses: {}
-      summary: Страница редактирования поста
       tags:
       - Posts
 swagger: "2.0"

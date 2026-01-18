@@ -28,7 +28,7 @@
         <img class="mb-4" src="data:image/*;base64,{{.Data}}" alt="Картинка" width="200" height="150">
         {{end}}
         <input type="number" name="id" id="id" placeholder="" value="{{.Id}}" style="display: none;">
-        <input type="text" name="a" id="a" placeholder="" value="/post/{{.Id}}" style="display: none;"><br>
+        <input type="text" name="a" id="a" placeholder="" value="/api/post/{{.Id}}" style="display: none;"><br>
         <input type="file" name="file" placeholder="Выберите файл" class="form-control" id="Field" value="{{.Data}}">
         <div class="form-check text-start my-3"> <input class="form-check-input" type="checkbox" value="true"
                 id="toggle" name="pict">
@@ -62,7 +62,7 @@
             <ya-tr-span style="visibility: inherit !important;">Назад</ya-tr-span></a>
     </p>
     <p>
-        <a href="/delete_post/{{.Id}}" class="btn btn-danger">Пост гавно? Удалить?</a>
+        <a href="/api/delete/{{.Id}}" class="btn btn-danger">Пост гавно? Удалить?</a>
     </p>
 </main>
 {{template "footer"}}
