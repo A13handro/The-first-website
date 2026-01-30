@@ -7,15 +7,22 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
 type Article struct {
-	Id             uint16
-	Title, Content string
-	Data           string
-	Mes            string
-	Rol            bool
+	Title     string
+	Content   string
+	Images    string
+	PostId    uuid.UUID
+	Createdat string
+	Updatedat string
+	Authorid  uuid.UUID
+	Name      string
+	Surname   string
+	Rollle    string
+	Mes       string
 }
 
 var Art = []Article{}
@@ -24,7 +31,7 @@ var ShowPosts = Article{}
 var AccessToken string
 var RefreshToken string
 
-var ThiseID int
+var UserID uuid.UUID
 var Message string
 var secretKey = []byte("my_secret_key")
 
@@ -36,7 +43,7 @@ func CheckErr(err error) { //Проверка на ошибку
 	}
 }
 
-func GenerateToken(userID int, num int) (string, error) { //Создание токена
+func GenerateToken(userID uuid.UUID, num int) (string, error) { //Создание токена
 	claims := jwt.MapClaims{
 		"id":  userID,
 		"exp": time.Now().Add(time.Hour * time.Duration(num)).Unix(),
@@ -62,7 +69,7 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc { //Основная
 		var authTokenA string //Переменная для коротковременного токена в бд
 		var authTokenR string //Переменная для долговременного токена в бд
 
-		table, err := db.Query("SELECT accesstoken FROM users WHERE id = $1", ThiseID)
+		table, err := db.Query("SELECT accesstoken FROM users WHERE userid = $1", UserID)
 		CheckErr(err)
 		if table.Next() {
 			table.Scan(&authTokenA)
@@ -74,12 +81,12 @@ func AuthMiddleware(next http.HandlerFunc) http.HandlerFunc { //Основная
 		}
 		tokenA, _ := ParseToken(authTokenA) //Проверяем на действительность токен
 		if !tokenA.Valid {
-			err1 := db.QueryRow("SELECT refreshtoken FROM users WHERE id = $1", ThiseID).Scan(&authTokenR)
+			err1 := db.QueryRow("SELECT refreshtoken FROM users WHERE userid = $1", UserID).Scan(&authTokenR)
 			CheckErr(err1)                      //Вытягиваем refreshtoken
 			tokenR, _ := ParseToken(authTokenR) //Проверяем
 			if tokenR.Valid {                   //Обновляем AccessToken, если refreshtoken действителен
-				AccessToken, _ = GenerateToken(ThiseID, 15)
-				_, err = db.Exec("UPDATE users SET accesstoken = $1 WHERE id = $2", AccessToken, ThiseID)
+				AccessToken, _ = GenerateToken(UserID, 15)
+				_, err = db.Exec("UPDATE users SET accesstoken = $1 WHERE userid = $2", AccessToken, UserID)
 				CheckErr(err)
 			} else { //Иначе
 				Message = "Время сеанса истекло. Пожалуйста, авторезируйтесь повторно."

@@ -13,7 +13,7 @@
         <h3 class="float-md-start mb-0"><ya-tr-span style="visibility: inherit !important;">Vibe-Web</ya-tr-span>
         </h3>
         <nav class="nav nav-masthead justify-content-center float-md-end">
-            {{if .Role}}
+            {{if eq .Role "Author"}}
             <a class="nav-link fw-bold py-1 px-0 active" aria-current="page" href="/api"><ya-tr-span
                     style="visibility: inherit !important;">Главная</ya-tr-span></a> <a
                 class="nav-link fw-bold py-1 px-0" href="/api/posts"><ya-tr-span
@@ -32,7 +32,7 @@
             вехой в моей жизни — рождением моего первого собственного сайта. Это не просто набор HTML‑страниц и кода.
             Это — мой личный цифровой след, первая ступень в мир веб‑разработки и онлайн‑самовыражения.
             {{if .Mes}}
-            <h2 id="messagee">{{.Mes}}</h2>
+            <h2 id="messagee" style="color: red;">{{.Mes}}</h2>
             {{end}}
             <script>
                 setTimeout(function () {
@@ -41,13 +41,23 @@
             </script>
             {{ range .Posts }}
             <div class="alert alert-danger">
-                {{if and (ne .Data "s") (ne .Data "cw==")}}
-                <img class="mb-4" src="data:image/*;base64,{{.Data}}" alt="Картинка" width="200" height="150">
+                <div class="d-flex justify-content-end w-100 mb-2">
+                    <small class="text-muted">
+                        Создано: {{.Createdat}}
+                        {{if ne .Createdat .Updatedat}}
+                        Обновлено: {{.Updatedat}}
+                        {{end}}
+                        <br>
+                        Автор: {{.Name}} {{.Surname}}
+                    </small>
+                </div>
+                {{if and (ne .Images "s") (ne .Images "cw==")}}
+                <img class="mb-4" src="data:image/*;base64,{{.Images}}" alt="Картинка" width="200" height="150">
                 {{end}}
                 <h2>{{.Title}}</h2>
                 <p>{{.Content}}</p>
-                {{if .Rol }}
-                <a href="/api/post/{{.Id}}" class="btn btn-danger">Редактировать пост</a>
+                {{if eq .Rollle "Author"}}
+                <a href="/api/post/{{.PostId}}" class="btn btn-danger">Редактировать пост</a>
                 {{end}}
             </div>
             {{else}}
