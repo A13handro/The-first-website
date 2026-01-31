@@ -17,7 +17,7 @@ import (
 // @Tags Authorization
 // @Router /api/auth/login [get]
 func Login(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/header.html", "templates/login.html")
+	t, err := template.ParseFiles("C:/Users/Александр/Desktop/The-first-website/templates/header.html", "C:/Users/Александр/Desktop/The-first-website/templates/login.html")
 	tkns.CheckErr(err)
 
 	tkns.AccessToken = "" // Выходим из аккаунта
@@ -48,14 +48,14 @@ func Log(w http.ResponseWriter, r *http.Request) {
 	var ID uuid.UUID
 	err = db.QueryRow("SELECT passwordhash, userid FROM users WHERE email = $1", email).Scan(&storedHash, &ID) //Поиск
 	if err != nil {
-		tkns.Message = "Неверный логин"
+		tkns.Message = "Неверный email!"
 		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) //Сравение пароля
 	if err != nil {
-		tkns.Message = "Неверный пароль"
+		tkns.Message = "Неверный пароль!"
 		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
 		return
 	}
@@ -73,7 +73,7 @@ func Log(w http.ResponseWriter, r *http.Request) {
 // @Tags Registration
 // @Router /api/auth/register [get]
 func Register(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/header.html", "templates/register.html")
+	t, err := template.ParseFiles("C:/Users/Александр/Desktop/The-first-website/templates/header.html", "C:/Users/Александр/Desktop/The-first-website/templates/register.html")
 	tkns.CheckErr(err)
 
 	tkns.AccessToken = "" // Выходим из аккаунта

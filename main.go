@@ -21,7 +21,7 @@ import (
 // @host localhost:8080
 // @BasePath /api/v1
 
-func handlfunc() {
+func handlfunc() *mux.Router {
 	rtr := mux.NewRouter()
 
 	rtr.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
@@ -40,6 +40,8 @@ func handlfunc() {
 
 	http.Handle("/", rtr)
 	http.ListenAndServe(":8080", nil)
+
+	return rtr
 }
 
 func main() {
