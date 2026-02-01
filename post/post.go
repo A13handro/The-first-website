@@ -19,7 +19,7 @@ import (
 // @Tags Posts
 // @Router /api/posts [get]
 func Posts(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("templates/header.html", "templates/posts.html", "templates/footer.html")
+	t, err := template.ParseFiles("C:/Users/Александр/Desktop/The-first-website/templates/header.html", "C:/Users/Александр/Desktop/The-first-website/templates/posts.html", "C:/Users/Александр/Desktop/The-first-website/templates/footer.html")
 	tkns.CheckErr(err)
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
