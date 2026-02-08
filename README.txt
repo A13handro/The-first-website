@@ -1,49 +1,54 @@
-Инструкции по запуску сайта:
+Инструкции по запуску тестов:
 
-1. Создаем базу данных:
+1. Создайте файл .env по образцу .env-example
 
-    CREATE database usersdb
+2. Создаем базу данных:
 
-2. Создаём таблицу пользователей:
+CREATE database usersdb
 
-    CREATE TABLE users (
-        email CHARACTER VARYING(200) NOT NULL,
-        passwordhash CHARACTER VARYING(200) NOT NULL,
-        name CHARACTER VARYING(200) NOT NULL,
-        surname CHARACTER VARYING(200) NOT NULL,
-        accesstoken CHARACTER VARYING(512),
-        role CHARACTER VARYING(6) NOT NULL,
-        refreshtoken CHARACTER VARYING(512),
-        userid UUID NOT NULL DEFAULT gen_random_uuid(),
-        PRIMARY KEY (userid)
-    )
+3. Создаём таблицу для пользователей:
 
-3. Создаём таблицу для постов:
+CREATE TABLE users (
+    email TEXT NOT NULL,
+    passwordhash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    refreshtoken TEXT,
+    userid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    refreshtokenexpirytime TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + '7 days'::interval)
+)
 
-    CREATE TABLE articles (
-        title CHARACTER VARYING(50) NOT NULL,
-        content TEXT NOT NULL,
-        images BYTEA DEFAULT '\x73'::BYTEA,
-        postid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-        createdat TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        updatedat TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        authorid UUID
-    )
+4. Создаём таблицу для постов:
 
-4. Запускаем в терминале:
+CREATE TABLE articles (
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    postid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    createdat TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedat TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    authorid UUID NOT NULL,
+    idempotencykey TEXT NOT NULL,
+    status TEXT NOT NULL
+)
+
+5. Создаём таблицу для картинок:
+
+CREATE TABLE pictures (
+    imageid UUID NOT NULL PRIMARY KEY,
+    postid UUID NOT NULL,
+    createdat TIMESTAMP WITHOUT TIME ZONE NOT NULL
+)
+
+6. Запускаем в терминале:
 
     go run main.go
 
-5. Документация расположена по адресу:
+6. Документация расположена по адресу:
 
     http://localhost:8080/swagger/index.html
 
-6. Чтобы зайти на сайт нужно перейти по адресу:
+7. Чтобы зайти на сайт нужно перейти по адресу:
 
-    http://localhost:8080/api/auth/register
-
-7. Сначала нужно зарегестрироваться, потом войти. На главной странице постов пока нет,
-их можно добавить(если при регистрации выбрана роль автора), перейдя на страницу создания постов.
-Создать пост можно с картинкой или без. При редактировании поста картинку можно не менять,
-можно убрать или выбрать новую. Посты могут изменять все авторы. Читатели могут только смотреть посты.
-Также можно выйти из аккаунта.
+Чтобы протестировать функции через postman импортируйте
+ Tests.postman_collection.json
+из проекта в postman и измените адреса: uuid постов и картинок
+и файл картинки, когда будете ее добавлять

@@ -2,55 +2,101 @@ package mst
 
 import (
 	"database/sql"
-	"html/template"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
-	tkns "the-first-website/tokens"
-
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
-// @Summary Главная страница
-// @Tags Master
-// @Router /api [get]
-func Master(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("C:/Users/Александр/Desktop/The-first-website/templates/header.html", "C:/Users/Александр/Desktop/The-first-website/templates/index.html", "C:/Users/Александр/Desktop/The-first-website/templates/footer.html")
-	tkns.CheckErr(err)
+// @Summary Просмотр постов
+// @Description Требует аутентификации.
+// @Tags Viewing
+// @Router /api/posts [Get]
+func Viewing(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("refresh_token")
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+		return
+	}
+	Refreshtoken := cookie.Value
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
-	db, err1 := sql.Open("postgres", connStr)
-	tkns.CheckErr(err1)
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+		return
+	}
 	defer db.Close()
 
-	table, err2 := db.Query("SELECT title, content, images, createdat, updatedat, authorid, postid FROM articles")
-	tkns.CheckErr(err2)
+	var Role string
+	err = db.QueryRow("SELECT role FROM users WHERE refreshtoken = $1", Refreshtoken).Scan(&Role)
+	if err != nil {
+		fmt.Println("Ошибка!:", err)
+		return
+	}
 
-	var role string
-	var Art = []tkns.Article{}
-	err3 := db.QueryRow("SELECT role FROM users WHERE userid = $1", tkns.UserID).Scan(&role)
-	tkns.CheckErr(err3)
-	for table.Next() { //Заполняем Art
-		var post tkns.Article
-		var cr, up time.Time
-		err = table.Scan(&post.Title, &post.Content, &post.Images, &cr, &up, &post.Authorid, &post.PostId)
-		post.Rollle = role
-		err4 := db.QueryRow("SELECT name, surname FROM users WHERE userid = $1", post.Authorid).Scan(&post.Name, &post.Surname)
-		tkns.CheckErr(err4)
-		post.Createdat = cr.Format(time.Stamp)
-		post.Updatedat = up.Format(time.Stamp)
-		tkns.CheckErr(err)
-		Art = append(Art, post)
+	type Article struct {
+		Title     string
+		Content   string
+		Createdat time.Time
+		Updatedat time.Time
+		Status    string
+		Number    int
 	}
-	data := struct { //Создаем структуру для передачи данных в html
-		Posts []tkns.Article
-		Role  string
-		Mes   string
-	}{
-		Posts: Art,
-		Role:  role,
-		Mes:   tkns.Message,
+
+	var Art = []Article{}
+	switch Role {
+	case "Reader":
+		table, err := db.Query("SELECT title, content, createdat, updatedat, postid FROM articles WHERE status = 'Published'")
+		if err != nil {
+			fmt.Println("Ошибка!:", err)
+			return
+		}
+		for table.Next() {
+			var post Article
+			var PostId uuid.UUID
+			table.Scan(&post.Title, &post.Content, &post.Createdat, &post.Updatedat, &PostId)
+
+			pic, err := db.Query("SELECT imageid FROM pictures WHERE postid = $1", PostId)
+			if err != nil {
+				fmt.Println("Ошибка!:", err)
+				return
+			}
+			for pic.Next() { //Подсчет количества картинок в посте
+				post.Number++
+			}
+			Art = append(Art, post)
+		}
+		table.Close()
+
+	case "Author":
+		table, err := db.Query("SELECT title, content, createdat, updatedat, status, postid FROM articles")
+		if err != nil {
+			fmt.Println("Ошибка!:", err)
+			return
+		}
+
+		for table.Next() {
+			var post Article
+			var PostId uuid.UUID
+			table.Scan(&post.Title, &post.Content, &post.Createdat, &post.Updatedat, &post.Status, &PostId)
+			pic, err := db.Query("SELECT imageid FROM pictures WHERE postid = $1", PostId)
+			if err != nil {
+				fmt.Println("Ошибка!:", err)
+				return
+			}
+			for pic.Next() { //Подсчет количества картинок в посте
+				post.Number++
+			}
+			Art = append(Art, post)
+		}
+		table.Close()
 	}
-	t.ExecuteTemplate(w, "index", data)
-	tkns.Message = ""
+
+	w.WriteHeader(http.StatusOK)
+	jsonData, err := json.MarshalIndent(Art, "", "    ")
+	w.Write(jsonData)
 }

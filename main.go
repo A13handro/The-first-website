@@ -2,7 +2,7 @@ package main
 
 import (
 	"net/http"
-	auth "the-first-website/auth"
+	"the-first-website/auth"
 	_ "the-first-website/docs"
 	mst "the-first-website/master"
 	pst "the-first-website/post"
@@ -23,24 +23,24 @@ import (
 
 func handlfunc() *mux.Router {
 	rtr := mux.NewRouter()
-
 	rtr.PathPrefix("/swagger").Handler(httpSwagger.WrapHandler)
 
-	rtr.HandleFunc("/api", tkns.AuthMiddleware(mst.Master)).Methods("GET")      //Главная страница
-	rtr.HandleFunc("/api/posts", tkns.AuthMiddleware(pst.Posts)).Methods("GET") //Создание поста
-	rtr.HandleFunc("/api/pos", pst.Pos).Methods("POST")                         //обработка Создания поста
-	//Страница редактирования поста
-	rtr.HandleFunc("/api/post/{id:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}", tkns.AuthMiddleware(pst.Edit)).Methods("GET")
-	//Удаление поста
-	rtr.HandleFunc("/api/delete/{id:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}", tkns.AuthMiddleware(pst.Delete)).Methods("GET")
-	rtr.HandleFunc("/api/auth/login", auth.Login).Methods("GET")       //Авторизация
-	rtr.HandleFunc("/api/auth/log", auth.Log).Methods("POST")          //обработка Авторизации
-	rtr.HandleFunc("/api/auth/register", auth.Register).Methods("GET") //Регистрация
-	rtr.HandleFunc("/api/auth/reg", auth.Reg).Methods("POST")          //обработка Регистрации
+	rtr.HandleFunc("/api/auth/register", auth.Register).Methods("POST")
+	rtr.HandleFunc("/api/auth/login", auth.Login).Methods("POST")
+	rtr.HandleFunc("/api/auth/refresh-token", tkns.RefreshToken).Methods("POST")
+	rtr.HandleFunc("/api/posts", tkns.AuthMiddleware(pst.Posts)).Methods("POST")
+	rtr.HandleFunc("/api/posts/{postId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/images",
+		tkns.AuthMiddleware(pst.Images)).Methods("POST")
+	rtr.HandleFunc("/api/posts/{postId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}",
+		tkns.AuthMiddleware(pst.Edit)).Methods("PUT")
+	rtr.HandleFunc("/api/posts/{postId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/images/"+
+		"{imageId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}", tkns.AuthMiddleware(pst.Delete)).Methods("DELETE")
+	rtr.HandleFunc("/api/posts/{postId:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}}/status",
+		tkns.AuthMiddleware(pst.Publish)).Methods("PATCH")
+	rtr.HandleFunc("/api/posts", tkns.AuthMiddleware(mst.Viewing)).Methods("GET")
 
 	http.Handle("/", rtr)
 	http.ListenAndServe(":8080", nil)
-
 	return rtr
 }
 

@@ -18,88 +18,89 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api": {
-            "get": {
-                "tags": [
-                    "Master"
-                ],
-                "summary": "Главная страница",
-                "responses": {}
-            }
-        },
-        "/api/auth/log": {
-            "post": {
-                "tags": [
-                    "Authorization"
-                ],
-                "summary": "Метод обработки авторизации",
-                "responses": {}
-            }
-        },
         "/api/auth/login": {
-            "get": {
+            "post": {
                 "tags": [
                     "Authorization"
                 ],
-                "summary": "Страница авторизации",
+                "summary": "Авторизация",
                 "responses": {}
             }
         },
-        "/api/auth/reg": {
+        "/api/auth/refresh-token": {
             "post": {
+                "description": "метод вызывается автоматически из функции-оболочки (AuthMiddleware) при невалидном Accesstoken",
                 "tags": [
-                    "Registration"
+                    "Authorization"
                 ],
-                "summary": "Метод обработки регистрации",
+                "summary": "Обновление токена",
                 "responses": {}
             }
         },
         "/api/auth/register": {
-            "get": {
-                "tags": [
-                    "Registration"
-                ],
-                "summary": "Страница регистрации",
-                "responses": {}
-            }
-        },
-        "/api/delete/{id}": {
-            "get": {
-                "description": "Требует аутентификации.",
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Удаление поста",
-                "responses": {}
-            }
-        },
-        "/api/pos": {
             "post": {
-                "description": "Требует аутентификации. Функция для создания и изменения поста. Сложная логика с картинками: при создании нужно выбрать будет картинка или нет, а при изменении можно не менять.",
                 "tags": [
-                    "Posts"
+                    "Authorization"
                 ],
-                "summary": "Обработка создания поста или изменения поста",
-                "responses": {}
-            }
-        },
-        "/api/post/{id}": {
-            "get": {
-                "description": "Требует аутентификации.",
-                "tags": [
-                    "Posts"
-                ],
-                "summary": "Страница редактирования поста",
+                "summary": "Регистрация",
                 "responses": {}
             }
         },
         "/api/posts": {
             "get": {
-                "description": "Требует аутентификации. Проверяет роль. Если роль читателя, то выдает сообщение и перенаправляет на главную страницу.",
+                "description": "Требует аутентификации.",
+                "tags": [
+                    "Viewing"
+                ],
+                "summary": "Просмотр постов",
+                "responses": {}
+            },
+            "post": {
+                "description": "Требует аутентификации(Роль Автор).",
                 "tags": [
                     "Posts"
                 ],
-                "summary": "Страница создания поста",
+                "summary": "Создание поста",
+                "responses": {}
+            }
+        },
+        "/api/posts/{postId}": {
+            "put": {
+                "description": "Требует аутентификации(Роль Автор).",
+                "tags": [
+                    "Edit"
+                ],
+                "summary": "Редактирование поста",
+                "responses": {}
+            }
+        },
+        "/api/posts/{postId}/images": {
+            "post": {
+                "description": "Требует аутентификации(Роль Автор).",
+                "tags": [
+                    "Images"
+                ],
+                "summary": "Добавление картинки к посту",
+                "responses": {}
+            }
+        },
+        "/api/posts/{postId}/images/{imageId}": {
+            "delete": {
+                "description": "Требует аутентификации(Роль Автор).",
+                "tags": [
+                    "Delete"
+                ],
+                "summary": "Удаление картинки из поста",
+                "responses": {}
+            }
+        },
+        "/api/posts/{postId}/status": {
+            "patch": {
+                "description": "Требует аутентификации(Роль Автор).",
+                "tags": [
+                    "Publish"
+                ],
+                "summary": "Публикация поста",
                 "responses": {}
             }
         }

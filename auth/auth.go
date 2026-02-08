@@ -2,7 +2,8 @@ package auth
 
 import (
 	"database/sql"
-	"html/template"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	tkns "the-first-website/tokens"
@@ -13,120 +14,163 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// @Summary Страница авторизации
+// @Summary Авторизация
 // @Tags Authorization
-// @Router /api/auth/login [get]
+// @Router /api/auth/login [post]
 func Login(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("C:/Users/Александр/Desktop/The-first-website/templates/header.html", "C:/Users/Александр/Desktop/The-first-website/templates/login.html")
-	tkns.CheckErr(err)
-
-	tkns.AccessToken = "" // Выходим из аккаунта
-	tkns.RefreshToken = ""
-
-	t.ExecuteTemplate(w, "login", tkns.Message)
-	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
-}
-
-// @Summary Метод обработки авторизации
-// @Tags Authorization
-// @Router /api/auth/log [post]
-func Log(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
-	if email == "" || password == "" { //Проверка на заполнение формы
-		tkns.Message = "Не все поля заполнены!"
-		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
+	if email == "" || password == "" {
+		fmt.Println("Не все поля заполнены")
 		return
 	}
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
-	tkns.CheckErr(err)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+		return
+	}
 	defer db.Close()
 
 	var storedHash string
-	var ID uuid.UUID
-	err = db.QueryRow("SELECT passwordhash, userid FROM users WHERE email = $1", email).Scan(&storedHash, &ID) //Поиск
-	if err != nil {
-		tkns.Message = "Неверный email!"
-		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
+	var UserID uuid.UUID
+	err = db.QueryRow("SELECT passwordhash, userid FROM users WHERE email = $1", email).Scan(&storedHash, &UserID)
+
+	err1 := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) //Сравение пароля
+
+	if err != nil || err1 != nil {
+		fmt.Println("Неверный логин или пароль")
+		w.WriteHeader(http.StatusForbidden)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Неверный логин или пароль",
+		})
+		w.Write(jsonData)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(password)) //Сравение пароля
+	Accesstoken, _ := tkns.GenerateToken(UserID, 2)    // Создаем токен на 2 часа
+	Refreshtoken, _ := tkns.GenerateToken(UserID, 168) // Создаем токен на неделю
+	_, err = db.Exec("UPDATE users SET refreshtoken = $1, refreshtokenexpirytime = CURRENT_TIMESTAMP + INTERVAL '7 days' WHERE userid = $2", Refreshtoken, UserID)
 	if err != nil {
-		tkns.Message = "Неверный пароль!"
-		http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
+		fmt.Println("Ошибка: ", err)
 		return
 	}
 
-	tkns.UserID = ID                                   // Запоминаем ID пользователя
-	tkns.AccessToken, _ = tkns.GenerateToken(ID, 2)    // Создаем токен на 2 часа
-	tkns.RefreshToken, _ = tkns.GenerateToken(ID, 168) // Создаем токен на неделю
-	_, err = db.Exec("UPDATE users SET accesstoken = $1, refreshtoken = $2 WHERE userid = $3", tkns.AccessToken, tkns.RefreshToken, ID)
-	tkns.CheckErr(err) //Отправляем токен в бд
-	http.Redirect(w, r, "/api", http.StatusSeeOther)
-	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    Refreshtoken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   604800, // неделя
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    Accesstoken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   7200, // 2 часа
+	})
+
+	w.WriteHeader(http.StatusOK)
+	jsonData, _ := json.Marshal(map[string]string{
+		"Message": "Вход успешен",
+	})
+	w.Write(jsonData)
+
 }
 
-// @Summary Страница регистрации
-// @Tags Registration
-// @Router /api/auth/register [get]
+// @Summary Регистрация
+// @Tags Authorization
+// @Router /api/auth/register [post]
 func Register(w http.ResponseWriter, r *http.Request) {
-	t, err := template.ParseFiles("C:/Users/Александр/Desktop/The-first-website/templates/header.html", "C:/Users/Александр/Desktop/The-first-website/templates/register.html")
-	tkns.CheckErr(err)
-
-	tkns.AccessToken = "" // Выходим из аккаунта
-	tkns.RefreshToken = ""
-
-	t.ExecuteTemplate(w, "register", tkns.Message)
-	tkns.Message = "" //Обнуляем сообщение после передачи пользователю
-}
-
-// @Summary Метод обработки регистрации
-// @Tags Registration
-// @Router /api/auth/reg [post]
-func Reg(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
-	em := govalidator.IsEmail(strings.TrimSpace(email)) //Проверка на форму email
+	IsEmail := govalidator.IsEmail(strings.TrimSpace(email))
+	if IsEmail == false {
+		fmt.Println("Неверный формат email")
+		w.WriteHeader(http.StatusBadRequest)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Неверный формат email",
+		})
+		w.Write(jsonData)
+		return
+	}
 	password := r.FormValue("password")
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost) //Хешируем
-	tkns.CheckErr(err)
-
-	name := r.FormValue("name")       //Имя
-	surname := r.FormValue("surname") //Фамилия
-	role := r.FormValue("role")       //Роль
-	if role == "on" {
-		role = "Author"
-	} else {
-		role = "Reader"
-	}
-
-	if email == "" || password == "" || name == "" || surname == "" { //Проверка на заполнение формы
-		tkns.Message = "Не все поля заполнены!"
-		http.Redirect(w, r, "/api/auth/register", http.StatusSeeOther)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
 		return
-	} else if em == false {
-		tkns.Message = "Формат логина не соответсвует!"
-		http.Redirect(w, r, "/api/auth/register", http.StatusSeeOther)
+	}
+	role := r.FormValue("role") //Author или Reader
+
+	if email == "" || password == "" || role == "" { //Проверка на заполнение формы
+		fmt.Println("Не все поля заполнены")
+		w.WriteHeader(http.StatusBadRequest)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Не все поля заполнены",
+		})
+		w.Write(jsonData)
+
 		return
 	}
 
 	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
 	db, err := sql.Open("postgres", connStr)
-	tkns.CheckErr(err)
-	defer db.Close()
-
-	var idd string
-	erro := db.QueryRow("SELECT userid FROM users WHERE email = $1", email).Scan(&idd)
-	if erro == nil { //Проверка на уникальность email
-		tkns.Message = "Такой email уже зарегистрирован!"
-		http.Redirect(w, r, "/api/auth/register", http.StatusSeeOther)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
 		return
 	}
-	insert, err := db.Query("INSERT INTO users (email, passwordhash, name, surname, role) "+
-		"VALUES ($1, $2, $3, $4, $5)", email, hashedPass, name, surname, role)
-	tkns.CheckErr(err) //Сохраняем в бд
+	defer db.Close()
+
+	var UserID uuid.UUID
+	erro := db.QueryRow("SELECT userid FROM users WHERE email = $1", email).Scan(&UserID)
+	if erro == nil {
+		fmt.Println("Email уже существует")
+		w.WriteHeader(http.StatusForbidden)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Email уже существует",
+		})
+		w.Write(jsonData)
+		return
+	}
+	UserID = uuid.New()
+	Accesstoken, _ := tkns.GenerateToken(UserID, 2)    // Создаем токен на 2 часа
+	Refreshtoken, _ := tkns.GenerateToken(UserID, 168) // Создаем токен на неделю
+
+	insert, err := db.Query("INSERT INTO users (email, passwordhash, role, refreshtoken) "+
+		"VALUES ($1, $2, $3, $4)", email, hashedPass, role, Refreshtoken)
+	if err != nil {
+		fmt.Println("Ошибка: ", err)
+		return
+	}
 	insert.Close()
-	http.Redirect(w, r, "/api/auth/login", http.StatusSeeOther)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    Refreshtoken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   604800, // неделя
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    Accesstoken,
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   7200, // 2 часа
+	})
+
+	w.WriteHeader(http.StatusOK)
+	jsonData, _ := json.Marshal(map[string]string{
+		"Message": "Регистрация успешна",
+	})
+	w.Write(jsonData)
 }
