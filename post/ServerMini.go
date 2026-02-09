@@ -2,8 +2,7 @@ package pst
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"encoding/json"
 	"net/http"
 	"os"
 
@@ -15,11 +14,16 @@ import (
 func ServerMini(w http.ResponseWriter, r *http.Request) *minio.Client {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalln("Ошибка загрузки .env: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Ошибка загрузки .env",
+			"Error":   err.Error(),
+		})
+		w.Write(jsonData)
 	}
 	//Запускаем minio
 	ctx := context.Background()
-	endpoint := "localhost:9000"
+	endpoint := os.Getenv("ENDPOINT")
 	accessKeyID := os.Getenv("MINIO_ACCESS_KEY")
 	secretAccessKey := os.Getenv("MINIO_SECRET_KEY")
 	useSSL := false
@@ -30,7 +34,13 @@ func ServerMini(w http.ResponseWriter, r *http.Request) *minio.Client {
 		Secure: useSSL,
 	})
 	if err != nil {
-		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Ошибка проверки бакета",
+			"Error":   err.Error(),
+		})
+		w.Write(jsonData)
+		return minioClient
 	}
 	// бакет
 	bucketName := "pictures"
@@ -38,49 +48,32 @@ func ServerMini(w http.ResponseWriter, r *http.Request) *minio.Client {
 	if err != nil {
 		exists, err := minioClient.BucketExists(ctx, bucketName)
 		if err != nil {
-			log.Fatalln("Ошибка проверки бакета:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonData, _ := json.Marshal(map[string]string{
+				"Message": "Ошибка проверки бакета",
+				"Error":   err.Error(),
+			})
+			w.Write(jsonData)
+			return minioClient
 		}
 		if !exists {
 			// Создаём бакет, если его нет
 			err = minioClient.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 			if err != nil {
-				log.Fatalln("Ошибка создания бакета:", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				jsonData, _ := json.Marshal(map[string]string{
+					"Message": "Ошибка создания бакета",
+					"Error":   err.Error(),
+				})
+				w.Write(jsonData)
+				return minioClient
 			}
-			log.Printf("Бакет %s создан", bucketName)
+			w.WriteHeader(http.StatusOK)
+			jsonData, _ := json.Marshal(map[string]string{
+				"Message": "Бакет успешно создан",
+			})
+			w.Write(jsonData)
 		}
 	}
-
-	// // Получаем файл
-	// file, header, err := r.FormFile("image")
-	// if err != nil {
-	// 	fmt.Println("Ошибка получения файла: ", err)
-	// }
-	// defer file.Close()
-
-	// objectName := header.Filename
-	// contentType := header.Header.Get("Content-Type")
-	// if contentType == "" {
-	// 	contentType = "application/octet-stream"
-	// }
-
-	// //Выгружаем файл в minio
-	// _, err = minioClient.PutObject(
-	// 	context.Background(),
-	// 	bucketName,
-	// 	objectName,
-	// 	file,
-	// 	header.Size,
-	// 	minio.PutObjectOptions{ContentType: contentType},
-	// )
-	// if err != nil {
-	// 	fmt.Println("Ошибка загрузки в MinIO: ", err)
-	// }
-
-	// log.Printf("Файл %s загружен в бакет %s\n", objectName, bucketName)
-	// w.WriteHeader(http.StatusOK)
-	// jsonData, _ := json.Marshal(map[string]string{
-	// 	"Message": "Файл успешно загружен в бакет",
-	// })
-	// w.Write(jsonData)
 	return minioClient
 }

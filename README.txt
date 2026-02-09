@@ -2,19 +2,15 @@
 
 1. Создайте файл .env по образцу .env-example
 
-2. Создаем базу данных:
-
-CREATE database usersdb
-
 3. Создаём таблицу для пользователей:
 
 CREATE TABLE users (
     email TEXT NOT NULL,
-    passwordhash TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
     role TEXT NOT NULL,
-    refreshtoken TEXT,
-    userid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-    refreshtokenexpirytime TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + '7 days'::interval)
+    refresh_token TEXT,
+    user_id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    refresh_token_expiry_time TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + '7 days'::interval)
 )
 
 4. Создаём таблицу для постов:
@@ -22,20 +18,21 @@ CREATE TABLE users (
 CREATE TABLE articles (
     title TEXT NOT NULL,
     content TEXT NOT NULL,
-    postid UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-    createdat TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updatedat TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    authorid UUID NOT NULL,
-    idempotencykey TEXT NOT NULL,
+    post_id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    author_id UUID NOT NULL,
+    idempotency_key TEXT NOT NULL,
     status TEXT NOT NULL
 )
 
 5. Создаём таблицу для картинок:
 
 CREATE TABLE pictures (
-    imageid UUID NOT NULL PRIMARY KEY,
-    postid UUID NOT NULL,
-    createdat TIMESTAMP WITHOUT TIME ZONE NOT NULL
+    image_id UUID NOT NULL PRIMARY KEY,
+    post_id UUID NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    image_url TEXT NOT NULL
 )
 
 6. Запускаем в терминале:

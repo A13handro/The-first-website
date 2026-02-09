@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/minio/minio-go/v7"
 )
@@ -22,23 +24,53 @@ func Posts(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Пользователь не авторизован",
+		})
+		w.Write(jsonData)
 		return
 	}
 	Refreshtoken := cookie.Value
 
-	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	err = godotenv.Load()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Ошибка .env",
+		})
+		w.Write(jsonData)
+		return
+	}
+	connStr := fmt.Sprintf("user=%s password=%s port=%s dbname=%s sslmode=%s",
+		os.Getenv("PG_USER"),
+		os.Getenv("PG_PASSWORD"),
+		os.Getenv("PG_PORT"),
+		os.Getenv("PG_DATABASE"),
+		os.Getenv("PG_SSLMODE"),
+	)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 	defer db.Close()
 
 	var Role string
 	var UserID uuid.UUID
-	err = db.QueryRow("SELECT role, userid FROM users WHERE refreshtoken = $1", Refreshtoken).Scan(&Role, &UserID)
+	err = db.QueryRow("SELECT role, user_id FROM users WHERE refresh_token = $1", Refreshtoken).Scan(&Role, &UserID)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 	if Role == "Reader" {
@@ -52,13 +84,17 @@ func Posts(w http.ResponseWriter, r *http.Request) {
 
 	title := r.FormValue("title")
 	content := r.FormValue("content")
+	idempotencykey := r.FormValue("idempotencykey")
 
 	if title == "" || content == "" {
-		fmt.Println("Не вся форма заполнена")
+		w.WriteHeader(http.StatusBadRequest)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Не вся форма заполнена",
+		})
+		w.Write(jsonData)
 		return
 	}
-	idempotencykey := title + content + UserID.String()
-	err = db.QueryRow("SELECT authorid FROM articles WHERE idempotencykey = $1", idempotencykey).Scan(&UserID)
+	err = db.QueryRow("SELECT author_id FROM articles WHERE idempotency_key = $1", idempotencykey).Scan(&UserID)
 	if err == nil {
 		w.WriteHeader(http.StatusConflict)
 		jsonData, _ := json.Marshal(map[string]string{
@@ -69,24 +105,29 @@ func Posts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Exec(
-		"INSERT INTO articles (title, content, createdat, updatedat, authorid, idempotencykey, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+		"INSERT INTO articles (title, content, created_at, updated_at, author_id, idempotency_key, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
 		title, content, time.Now(), time.Now(), UserID, idempotencykey, "Draft",
 	)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	jsonData, _ := json.Marshal(map[string]string{
-		"Message":        "Пост успешно создан",
-		"title":          title,
-		"content":        content,
-		"createdat":      time.Now().String(),
-		"updatedat":      time.Now().String(),
-		"authorid":       UserID.String(),
-		"idempotencykey": idempotencykey,
-		"status":         "Draft",
+		"Message":         "Пост успешно создан",
+		"title":           title,
+		"content":         content,
+		"created_at":      time.Now().String(),
+		"updated_at":      time.Now().String(),
+		"author_id":       UserID.String(),
+		"idempotency_key": idempotencykey,
+		"status":          "Draft",
 	})
 	w.Write(jsonData)
 }
@@ -100,21 +141,52 @@ func Images(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Пользователь не авторизован",
+		})
+		w.Write(jsonData)
 	}
 	Refreshtoken := cookie.Value
 
-	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	err = godotenv.Load()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error":   err.Error(),
+			"Message": "Ошибка загрузки .env",
+		})
+		w.Write(jsonData)
+		return
+	}
+	connStr := fmt.Sprintf("user=%s password=%s port=%s dbname=%s sslmode=%s",
+		os.Getenv("PG_USER"),
+		os.Getenv("PG_PASSWORD"),
+		os.Getenv("PG_PORT"),
+		os.Getenv("PG_DATABASE"),
+		os.Getenv("PG_SSLMODE"),
+	)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 	}
 	defer db.Close()
 
 	var UserID uuid.UUID
 	var Role string
-	err = db.QueryRow("SELECT role, userid FROM users WHERE refreshtoken = $1", Refreshtoken).Scan(&Role, &UserID)
+	err = db.QueryRow("SELECT role, user_id FROM users WHERE refresh_token = $1", Refreshtoken).Scan(&Role, &UserID)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 	if Role == "Reader" {
@@ -126,7 +198,7 @@ func Images(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var postid uuid.UUID
-	table, err := db.Query("SELECT postid FROM articles WHERE authorid = $1", UserID)
+	table, err := db.Query("SELECT post_id FROM articles WHERE author_id = $1", UserID)
 	var eq bool = false
 	for table.Next() {
 		table.Scan(&postid)
@@ -134,10 +206,8 @@ func Images(w http.ResponseWriter, r *http.Request) {
 			eq = true
 		}
 	}
+	table.Close()
 	if err != nil || eq != true {
-		fmt.Println(postid)
-		fmt.Println(PostId)
-		fmt.Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		jsonData, _ := json.Marshal(map[string]string{
 			"Message": "Пост не найден",
@@ -150,6 +220,12 @@ func Images(w http.ResponseWriter, r *http.Request) {
 	file, header, err := r.FormFile("image")
 	if err != nil {
 		fmt.Println("Ошибка получения файла: ", err)
+		w.WriteHeader(http.StatusBadRequest)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Картинка не получена",
+		})
+		w.Write(jsonData)
+		return
 	}
 	defer file.Close()
 
@@ -160,20 +236,38 @@ func Images(w http.ResponseWriter, r *http.Request) {
 	}
 	minioClient := ServerMini(w, r)
 
-	//Сохраняем картинку в бд
-	insert, err := db.Query("INSERT INTO pictures (imageid, postid, createdat) VALUES ($1, $2, $3)", objectName, PostId, time.Now())
-	if err != nil {
-		fmt.Println("Ошибка: ", err)
-	}
-	insert.Close()
-
 	//Выгружаем файл в minio
 	_, err = minioClient.PutObject(context.Background(), "pictures", objectName.String(), file, header.Size, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
-		fmt.Println("Ошибка загрузки в MinIO: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error":   err.Error(),
+			"Message": "Ошибка загрузки в MinIO",
+		})
+		w.Write(jsonData)
+		return
 	}
 
-	fmt.Printf("Картинка %s загружена в бакет pictures\n", objectName)
+	image_url, err := minioClient.PresignedGetObject(
+		context.Background(),
+		"pictures",
+		objectName.String(),
+		604800*time.Second,
+		nil,
+	)
+
+	//Сохраняем картинку в бд
+	insert, err := db.Query("INSERT INTO pictures (image_id, post_id, created_at, image_url) VALUES ($1, $2, $3, $4)", objectName, PostId, time.Now(), image_url.String())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
+		return
+	}
+	insert.Close()
+
 	w.WriteHeader(http.StatusCreated)
 	jsonData, _ := json.Marshal(map[string]string{
 		"Message": "Картинка успешно добавлена",
@@ -190,26 +284,57 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil || cookie.Value == "" {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Пользователь не авторизован",
+		})
+		w.Write(jsonData)
 		return
 	}
 	Refreshtoken := cookie.Value
 
-	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	err = godotenv.Load()
+	if err != nil {
+		fmt.Println("Ошибка загрузки .env: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Ошибка загрузки .env",
+		})
+		w.Write(jsonData)
+		return
+	}
+	connStr := fmt.Sprintf("user=%s password=%s port=%s dbname=%s sslmode=%s",
+		os.Getenv("PG_USER"),
+		os.Getenv("PG_PASSWORD"),
+		os.Getenv("PG_PORT"),
+		os.Getenv("PG_DATABASE"),
+		os.Getenv("PG_SSLMODE"),
+	)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 	defer db.Close()
 
 	var UserID uuid.UUID
 	var Role string
-	err = db.QueryRow("SELECT role, userid FROM users WHERE refreshtoken = $1", Refreshtoken).Scan(&Role, &UserID)
+	err = db.QueryRow("SELECT role, user_id FROM users WHERE refresh_token = $1", Refreshtoken).Scan(&Role, &UserID)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
-	if Role == "Reader" || Role != "Author" {
+	if Role != "Author" {
 		w.WriteHeader(http.StatusForbidden)
 		jsonData, _ := json.Marshal(map[string]string{
 			"Message": "Доступ запрещен",
@@ -219,7 +344,7 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var postid uuid.UUID
-	table, err := db.Query("SELECT postid FROM articles WHERE authorid = $1", UserID)
+	table, err := db.Query("SELECT post_id FROM articles WHERE author_id = $1", UserID)
 	var eq bool = false
 	for table.Next() {
 		table.Scan(&postid)
@@ -227,10 +352,8 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 			eq = true
 		}
 	}
+	table.Close()
 	if err != nil || eq != true {
-		fmt.Println(postid)
-		fmt.Println(PostId)
-		fmt.Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		jsonData, _ := json.Marshal(map[string]string{
 			"Message": "Пост не найден",
@@ -244,20 +367,30 @@ func Edit(w http.ResponseWriter, r *http.Request) {
 
 	if title == "" || content == "" {
 		fmt.Println("Не вся форма заполнена")
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Не вся форма заполнена",
+		})
+		w.Write(jsonData)
 		return
 	}
-	_, err = db.Exec("UPDATE articles SET title = $1, content = $2, updatedat = $3 WHERE postid = $4 AND authorid = $5", title, content, time.Now(), PostId, UserID)
+	_, err = db.Exec("UPDATE articles SET title = $1, content = $2, updated_at = $3 WHERE post_id = $4 AND author_id = $5", title, content, time.Now(), PostId, UserID)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	jsonData, _ := json.Marshal(map[string]string{
-		"Message":   "Пост успешно обновлен",
-		"title":     title,
-		"content":   content,
-		"updatedat": time.Now().String(),
+		"Message":    "Пост успешно обновлен",
+		"title":      title,
+		"content":    content,
+		"updated_at": time.Now().String(),
 	})
 	w.Write(jsonData)
 }
@@ -274,13 +407,40 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Пользователь не авторизован",
+		})
+		w.Write(jsonData)
 	}
 	Refreshtoken := cookie.Value
 
-	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	err = godotenv.Load()
+	if err != nil {
+		fmt.Println("Ошибка загрузки .env: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Ошибка загрузки .env",
+			"Error":   err.Error(),
+		})
+		w.Write(jsonData)
+		return
+	}
+	connStr := fmt.Sprintf("user=%s password=%s port=%s dbname=%s sslmode=%s",
+		os.Getenv("PG_USER"),
+		os.Getenv("PG_PASSWORD"),
+		os.Getenv("PG_PORT"),
+		os.Getenv("PG_DATABASE"),
+		os.Getenv("PG_SSLMODE"),
+	)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 	}
 	defer db.Close()
 
@@ -289,6 +449,11 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow("SELECT role FROM users WHERE refreshtoken = $1", Refreshtoken).Scan(&Role)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 	if Role == "Reader" {
@@ -300,7 +465,7 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var postid uuid.UUID
-	err = db.QueryRow("SELECT postid FROM pictures WHERE imageid = $1", ImageId).Scan(&postid)
+	err = db.QueryRow("SELECT post_id FROM pictures WHERE image_id = $1", ImageId).Scan(&postid)
 	if err != nil || PostId != postid.String() {
 		w.WriteHeader(http.StatusNotFound)
 		jsonData, _ := json.Marshal(map[string]string{
@@ -311,9 +476,14 @@ func Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//Удаляем картинку из бд
-	_, err = db.Exec("DELETE FROM pictures WHERE postid = $1 AND imageid = $2", PostId, ImageId)
+	_, err = db.Exec("DELETE FROM pictures WHERE post_id = $1 AND image_id = $2", PostId, ImageId)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 	}
 
 	minioClient := ServerMini(w, r)
@@ -345,26 +515,58 @@ func Publish(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("refresh_token")
 	if err != nil || cookie.Value == "" {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusUnauthorized)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Пользователь не авторизован",
+		})
+		w.Write(jsonData)
 		return
 	}
 	Refreshtoken := cookie.Value
 
-	connStr := "user=postgres password=123 port=5432 dbname=usersdb sslmode=disable"
+	err = godotenv.Load()
+	if err != nil {
+		fmt.Println("Ошибка загрузки .env: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Message": "Ошибка загрузки .env",
+			"Error":   err.Error(),
+		})
+		w.Write(jsonData)
+		return
+	}
+	connStr := fmt.Sprintf("user=%s password=%s port=%s dbname=%s sslmode=%s",
+		os.Getenv("PG_USER"),
+		os.Getenv("PG_PASSWORD"),
+		os.Getenv("PG_PORT"),
+		os.Getenv("PG_DATABASE"),
+		os.Getenv("PG_SSLMODE"),
+	)
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
 	defer db.Close()
 
 	var UserID uuid.UUID
 	var Role string
-	err = db.QueryRow("SELECT role, userid FROM users WHERE refreshtoken = $1", Refreshtoken).Scan(&Role, &UserID)
+	err = db.QueryRow("SELECT role, user_id FROM users WHERE refresh_token = $1", Refreshtoken).Scan(&Role, &UserID)
 	if err != nil {
 		fmt.Println("Ошибка: ", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		jsonData, _ := json.Marshal(map[string]string{
+			"Error": err.Error(),
+		})
+		w.Write(jsonData)
 		return
 	}
-	if Role == "Reader" || Role != "Author" {
+	if Role != "Author" {
 		w.WriteHeader(http.StatusForbidden)
 		jsonData, _ := json.Marshal(map[string]string{
 			"Message": "Доступ запрещен",
@@ -374,7 +576,7 @@ func Publish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var postid uuid.UUID
-	table, err := db.Query("SELECT postid FROM articles WHERE authorid = $1", UserID)
+	table, err := db.Query("SELECT post_id FROM articles WHERE author_id = $1", UserID)
 	var eq bool = false
 	for table.Next() {
 		table.Scan(&postid)
@@ -382,10 +584,8 @@ func Publish(w http.ResponseWriter, r *http.Request) {
 			eq = true
 		}
 	}
+	table.Close()
 	if err != nil || eq != true {
-		fmt.Println(postid)
-		fmt.Println(PostId)
-		fmt.Println(err)
 		w.WriteHeader(http.StatusNotFound)
 		jsonData, _ := json.Marshal(map[string]string{
 			"Message": "Пост не найден",
@@ -393,33 +593,31 @@ func Publish(w http.ResponseWriter, r *http.Request) {
 		w.Write(jsonData)
 		return
 	}
-
-	var Status string
-	err = db.QueryRow("SELECT status FROM articles WHERE postid = $1", PostId).Scan(&Status)
-	if err != nil {
-		fmt.Println("Ошибка: ", err)
-		return
-	}
-	if Status == "Draft" {
-		_, err = db.Exec("UPDATE articles SET status = 'Published' WHERE postid = $1", PostId)
+	Status := r.FormValue("status")
+	if Status == "Published" {
+		_, err = db.Exec("UPDATE articles SET status = $1 WHERE post_id = $2", Status, PostId)
 		if err != nil {
 			fmt.Println("Ошибка: ", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			jsonData, _ := json.Marshal(map[string]string{
+				"Error": err.Error(),
+			})
+			w.Write(jsonData)
 			return
 		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
 		jsonData, _ := json.Marshal(map[string]string{
 			"Message": "Неверное значение статуса",
-			"Status":  "Draft",
+			"Status":  Status,
 		})
 		w.Write(jsonData)
 		return
 	}
-
 	w.WriteHeader(http.StatusOK)
 	jsonData, _ := json.Marshal(map[string]string{
 		"Message": "Пост успешно опубликован",
-		"Status":  "Published",
+		"Status":  Status,
 	})
 	w.Write(jsonData)
 }
