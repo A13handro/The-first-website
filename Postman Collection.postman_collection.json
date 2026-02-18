@@ -1,11 +1,10 @@
 {
   "info": {
-    "_postman_id": "047d4b55-b6c3-4018-8cbc-da1e437aac01",
-    "name": "My Collection Copy",
-    "description": "### Welcome to Postman! This is your first collection. \n\nCollections are your starting point for building and testing APIs. You can use this one to:\n\n• Group related requests\n• Test your API in real-world scenarios\n• Document and share your requests\n\nUpdate the name and overview whenever you’re ready to make it yours.\n\n[Learn more about Postman Collections.](https://learning.postman.com/docs/collections/collections-overview/)",
+    "_postman_id": "b2482715-ff72-4a29-9fce-9f76098079b5",
+    "name": "Postman Collection",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "52072492",
-    "_collection_link": "https://go.postman.co/collection/52072492-047d4b55-b6c3-4018-8cbc-da1e437aac01?source=collection_link"
+    "_collection_link": "https://go.postman.co/collection/52072492-b2482715-ff72-4a29-9fce-9f76098079b5?source=collection_link"
   },
   "item": [
     {
@@ -14,27 +13,13 @@
         "method": "POST",
         "header": [],
         "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "email",
-              "value": "1@a.a",
-              "type": "text",
-              "uuid": "96eefce7-0f55-430e-9253-143114935c5c"
-            },
-            {
-              "key": "password",
-              "value": "1",
-              "type": "text",
-              "uuid": "18fcf508-1bc9-417e-85f1-5cd7fe87665a"
-            },
-            {
-              "key": "role",
-              "value": "Author",
-              "type": "text",
-              "uuid": "9d293c2f-7b2e-41ec-8fa5-d050662c1618"
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"1@a.a\",\r\n    \"Password\": \"1\",\r\n    \"Role\": \"Author\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
+          }
         },
         "url": {
           "raw": "http://localhost:8080/api/auth/register",
@@ -58,21 +43,13 @@
         "method": "POST",
         "header": [],
         "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "email",
-              "value": "1@a.a",
-              "type": "text",
-              "uuid": "20a58974-653a-4344-aeac-a05ca35bf911"
-            },
-            {
-              "key": "password",
-              "value": "1",
-              "type": "text",
-              "uuid": "3f40e8dc-03e0-46f2-b775-93e084f88aaa"
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"1@a.a\",\r\n    \"Password\": \"1\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
+          }
         },
         "url": {
           "raw": "http://localhost:8080/api/auth/login",
@@ -96,21 +73,13 @@
         "method": "POST",
         "header": [],
         "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "title",
-              "value": "Заголовок",
-              "type": "text",
-              "uuid": "71294540-d442-4871-bae8-4741798db2ff"
-            },
-            {
-              "key": "content",
-              "value": "Контент",
-              "type": "text",
-              "uuid": "9092acd5-cf57-4ed2-8108-ddf440f1b684"
+          "mode": "raw",
+          "raw": "{\r\n    \"Idempotency_key\": \"Урa\",\r\n    \"Title\": \"Заголовок\",\r\n    \"Content\": \"Текст\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
+          }
         },
         "url": {
           "raw": "http://localhost:8080/api/posts",
@@ -128,26 +97,18 @@
       "response": []
     },
     {
-      "name": "Редактирование поста",
+      "name": "Изменение поста",
       "request": {
         "method": "PUT",
         "header": [],
         "body": {
-          "mode": "formdata",
-          "formdata": [
-            {
-              "key": "title",
-              "value": "Обновленный заголовок",
-              "type": "text",
-              "uuid": "991ad932-383d-4225-ad5e-edf061cc1e91"
-            },
-            {
-              "key": "content",
-              "value": "Обновленный контент",
-              "type": "text",
-              "uuid": "576da67d-985b-4dd2-bf5e-a5c7e9c62294"
+          "mode": "raw",
+          "raw": "{\r\n    \"Title\": \"Новый заголовок\",\r\n    \"Content\": \"Новый текст\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
             }
-          ]
+          }
         },
         "url": {
           "raw": "http://localhost:8080/api/posts/",
@@ -182,7 +143,7 @@
           ]
         },
         "url": {
-          "raw": "http://localhost:8080/api/posts/",
+          "raw": "http://localhost:8080/api/posts//images",
           "protocol": "http",
           "host": [
             "localhost"
@@ -191,7 +152,8 @@
           "path": [
             "api",
             "posts",
-            ""
+            "",
+            "images"
           ]
         }
       },
@@ -199,9 +161,6 @@
     },
     {
       "name": "Удаление картинки",
-      "protocolProfileBehavior": {
-        "disabledSystemHeaders": {}
-      },
       "request": {
         "method": "DELETE",
         "header": [],
@@ -233,8 +192,13 @@
         "method": "PATCH",
         "header": [],
         "body": {
-          "mode": "formdata",
-          "formdata": []
+          "mode": "raw",
+          "raw": "{\r\n    \"Status\": \"Published\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": {
           "raw": "http://localhost:8080/api/posts//status",
@@ -262,8 +226,13 @@
         "method": "GET",
         "header": [],
         "body": {
-          "mode": "formdata",
-          "formdata": []
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
         "url": {
           "raw": "http://localhost:8080/api/posts",
@@ -279,36 +248,6 @@
         }
       },
       "response": []
-    }
-  ],
-  "event": [
-    {
-      "listen": "prerequest",
-      "script": {
-        "type": "text/javascript",
-        "packages": {},
-        "requests": {},
-        "exec": [
-          ""
-        ]
-      }
-    },
-    {
-      "listen": "test",
-      "script": {
-        "type": "text/javascript",
-        "packages": {},
-        "requests": {},
-        "exec": [
-          ""
-        ]
-      }
-    }
-  ],
-  "variable": [
-    {
-      "key": "token",
-      "value": ""
     }
   ]
 }

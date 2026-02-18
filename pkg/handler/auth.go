@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	todo "the-first-website"
+
+	"github.com/google/uuid"
 )
 
+// @Summary Регистрация
+// @Tags Authorization
+// @Router /api/auth/register [post]
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var input todo.User
 
@@ -15,19 +20,26 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		newErrorResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	UserID, err := h.services.Authorization.CreateUser(input)
-	if err != nil {
-		newErrorResponse(w, http.StatusInternalServerError, err.Error()) //Всегда один код, пока не нашел решения этого
-		return
-	}
-
+	UserID := uuid.New()
 	AccessToken, err := h.services.Authorization.GenerateToken(UserID, 2)
 	if err != nil {
 		newErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+
 	RefreshToken, err := h.services.Authorization.GenerateToken(UserID, 168)
+	if err != nil {
+		newErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = h.services.Authorization.CreateUser(RefreshToken, input)
+	if err != nil {
+		newErrorResponse(w, http.StatusInternalServerError, err.Error()) //Всегда один код, пока не нашел решения этого
+		return
+	}
+
+	err = h.services.Authorization.UpdateUser(RefreshToken, UserID)
 	if err != nil {
 		newErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -51,17 +63,12 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   604800,
 	})
-
-	w.WriteHeader(http.StatusOK)
-	jsonData, _ := json.Marshal(map[string]string{
-		"Message":      "Регистрация успешна",
-		"Id":           UserID.String(),
-		"RefreshToken": RefreshToken,
-		"AccessToken":  AccessToken,
-	})
-	w.Write(jsonData)
+	newErrorResponse(w, http.StatusOK, "Регистрация успешна")
 }
 
+// @Summary Авторизация
+// @Tags Authorization
+// @Router /api/auth/login [post]
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var input todo.User
 
@@ -82,6 +89,12 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	RefreshToken, err := h.services.Authorization.GenerateToken(UserID, 168)
+	if err != nil {
+		newErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	err = h.services.Authorization.UpdateUser(RefreshToken, UserID)
 	if err != nil {
 		newErrorResponse(w, http.StatusInternalServerError, err.Error())
 		return

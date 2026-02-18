@@ -76,6 +76,10 @@ func (h *Handler) AuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// @Summary Обновление токена
+// @Description метод вызывается автоматически из функции-оболочки (AuthMiddleware) при невалидном Accesstoken
+// @Tags RefreshToken
+// @Router /api/auth/refresh-token [post]
 func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var data map[string]string
 	err := json.NewDecoder(r.Body).Decode(&data)

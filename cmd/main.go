@@ -44,7 +44,12 @@ func main() {
 		logrus.Fatal("Ошибка db: ", err)
 	}
 
-	repos := repository.NewRepository(db)
+	minioClient, err := todo.ServerMinIO()
+	if err != nil {
+		logrus.Fatal("Ошибка инициализации MinIO: ", err)
+	}
+
+	repos := repository.NewRepository(db, minioClient)
 	service := service.NewService(repos)
 	handlers := handler.NewHandler(service)
 

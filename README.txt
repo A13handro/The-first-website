@@ -1,51 +1,26 @@
-Инструкции по запуску тестов:
+Инструкции по запуску:
 
 1. Создайте файл .env по образцу .env-example
 
-3. Создаём таблицу для пользователей:
+2. Создаём таблицы с помощью миграций:
 
-CREATE TABLE users (
-    email TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
-    role TEXT NOT NULL,
-    refresh_token TEXT,
-    user_id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-    refresh_token_expiry_time TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + '7 days'::interval)
-)
+migrate -path ./schima -database 'postgres://[PG_USER]:[PG_PASSWORD]@[HOST]:[PG_PORT]/[PG_DATABASE]?sslmode=[PG_SSLMODE]' up
 
-4. Создаём таблицу для постов:
+Только вместо [PG_...] указать свои данные из вашего файла .env, созданного в первом пункте инструкции
 
-CREATE TABLE articles (
-    title TEXT NOT NULL,
-    content TEXT NOT NULL,
-    post_id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    author_id UUID NOT NULL,
-    idempotency_key TEXT NOT NULL,
-    status TEXT NOT NULL
-)
+3. Если понадобится, можно также удалить таблицы с помощью аналогичной миграции:
 
-5. Создаём таблицу для картинок:
+migrate -path ./schima -database 'postgres://[PG_USER]:[PG_PASSWORD]@[HOST]:[PG_PORT]/[PG_DATABASE]?sslmode=[PG_SSLMODE]' down
 
-CREATE TABLE pictures (
-    image_id UUID NOT NULL PRIMARY KEY,
-    post_id UUID NOT NULL,
-    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
-    image_url TEXT NOT NULL
-)
+4. Запускаем в терминале:
 
-6. Запускаем в терминале:
+    go run cmd/main.go 
 
-    go run main.go
-
-6. Документация расположена по адресу:
+5. Документация расположена по адресу:
 
     http://localhost:8080/swagger/index.html
 
-7. Чтобы зайти на сайт нужно перейти по адресу:
-
-Чтобы протестировать функции через postman импортируйте
- Tests.postman_collection.json
-из проекта в postman и измените адреса: uuid постов и картинок
+6. Чтобы протестировать функции через postman импортируйте
+Postman Collection.postman_collection.json
+из проекта в postman и измените адреса: uuid постов, картинок
 и файл картинки, когда будете ее добавлять

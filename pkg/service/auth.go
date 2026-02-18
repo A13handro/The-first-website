@@ -26,10 +26,10 @@ func NewAuthService(repo repository.Authorization) *AuthService {
 	return &AuthService{repo: repo}
 }
 
-func (s *AuthService) CreateUser(user todo.User) (uuid.UUID, error) {
+func (s *AuthService) CreateUser(RefreshToken string, user todo.User) error {
 	user.Password = generatePasswordHash(user.Password)
 	user.IsEmail = govalidator.IsEmail(strings.TrimSpace(user.Email))
-	return s.repo.CreateUser(user)
+	return s.repo.CreateUser(RefreshToken, user)
 }
 
 func (s *AuthService) CheckUser(user todo.User) (uuid.UUID, error) {
@@ -75,4 +75,8 @@ func (*AuthService) ParseToken(tokenString string) (*jwt.Token, error) {
 
 func (s *AuthService) GetID(refresh_token string) (uuid.UUID, error) {
 	return s.repo.GetID(refresh_token)
+}
+
+func (s *AuthService) UpdateUser(refresh_token string, UserID uuid.UUID) error {
+	return s.repo.UpdateUser(refresh_token, UserID)
 }

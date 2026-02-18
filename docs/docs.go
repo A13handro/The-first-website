@@ -31,7 +31,7 @@ const docTemplate = `{
             "post": {
                 "description": "метод вызывается автоматически из функции-оболочки (AuthMiddleware) при невалидном Accesstoken",
                 "tags": [
-                    "Authorization"
+                    "RefreshToken"
                 ],
                 "summary": "Обновление токена",
                 "responses": {}
@@ -50,7 +50,7 @@ const docTemplate = `{
             "get": {
                 "description": "Требует аутентификации.",
                 "tags": [
-                    "Viewing"
+                    "Posts"
                 ],
                 "summary": "Просмотр постов",
                 "responses": {}
@@ -68,7 +68,7 @@ const docTemplate = `{
             "put": {
                 "description": "Требует аутентификации(Роль Автор).",
                 "tags": [
-                    "Edit"
+                    "Posts"
                 ],
                 "summary": "Редактирование поста",
                 "responses": {}
@@ -78,7 +78,7 @@ const docTemplate = `{
             "post": {
                 "description": "Требует аутентификации(Роль Автор).",
                 "tags": [
-                    "Images"
+                    "Image"
                 ],
                 "summary": "Добавление картинки к посту",
                 "responses": {}
@@ -88,7 +88,7 @@ const docTemplate = `{
             "delete": {
                 "description": "Требует аутентификации(Роль Автор).",
                 "tags": [
-                    "Delete"
+                    "Image"
                 ],
                 "summary": "Удаление картинки из поста",
                 "responses": {}
@@ -98,7 +98,7 @@ const docTemplate = `{
             "patch": {
                 "description": "Требует аутентификации(Роль Автор).",
                 "tags": [
-                    "Publish"
+                    "Posts"
                 ],
                 "summary": "Публикация поста",
                 "responses": {}

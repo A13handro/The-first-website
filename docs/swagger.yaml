@@ -21,7 +21,7 @@ paths:
       responses: {}
       summary: Обновление токена
       tags:
-      - Authorization
+      - RefreshToken
   /api/auth/register:
     post:
       responses: {}
@@ -34,7 +34,7 @@ paths:
       responses: {}
       summary: Просмотр постов
       tags:
-      - Viewing
+      - Posts
     post:
       description: Требует аутентификации(Роль Автор).
       responses: {}
@@ -47,26 +47,26 @@ paths:
       responses: {}
       summary: Редактирование поста
       tags:
-      - Edit
+      - Posts
   /api/posts/{postId}/images:
     post:
       description: Требует аутентификации(Роль Автор).
       responses: {}
       summary: Добавление картинки к посту
       tags:
-      - Images
+      - Image
   /api/posts/{postId}/images/{imageId}:
     delete:
       description: Требует аутентификации(Роль Автор).
       responses: {}
       summary: Удаление картинки из поста
       tags:
-      - Delete
+      - Image
   /api/posts/{postId}/status:
     patch:
       description: Требует аутентификации(Роль Автор).
       responses: {}
       summary: Публикация поста
       tags:
-      - Publish
+      - Posts
 swagger: "2.0"
